@@ -4,73 +4,115 @@ A small **local** web app for building decks for the Blue Dragon trading card
 game and exporting a single shareable image of the deck (staggered card stacks
 with copy counts), auto-sized to stay under Discord's 10 MB limit.
 
-Everything runs on your own machine — nothing is uploaded anywhere, and your
+Everything runs on your own machine. Nothing is uploaded anywhere, and your
 card images never leave your disk.
 
 ---
 
-## What you need
+## Features
 
-1. **Python 3.10+** — <https://www.python.org/downloads/> (tick *"Add Python to
-   PATH"* during install).
-2. **The card image pack.** Not in this repo (card images are gitignored). The
-   maintainer publishes a curated pack of deduplicated scans separately — see
-   the project's distribution link. Download it and unzip it into the `cards/`
-   folder at the root of this repo. Each image's filename stem is its card ID
-   (e.g. `BDS1-EN_0008.jpg` → card `BDS1-EN_0008`).
+- Browse all cards with chip-based filters (set / type / element) and a
+  combined name/code search.
+- In-app card editor: click a card to read it at full size and correct its
+  metadata; ◀ ▶ keys walk through the current filtered view.
+- Multi-set support — a card that was reprinted in two starter decks shows
+  up under both set chips.
+- Build multiple decks (each saved as a JSON file under `decks/`) with the
+  3-copies-per-card limit and a target deck size.
+- Export your deck as a single staggered-stack image, auto-tuned to fit
+  under Discord's 10 MB attachment cap.
+
+---
 
 ## Setup
 
-1. Clone or download this repo.
-2. Install dependencies:
+You need three things: Python, this repo, and the card pack.
+
+1. **Install Python 3.10 or newer.** <https://www.python.org/downloads/>
+   (on Windows tick *"Add Python to PATH"* during install).
+2. **Clone this repo.**
+   ```bash
+   git clone https://github.com/<your-fork>/blue-dragon-deckbuilder.git
+   cd blue-dragon-deckbuilder
+   ```
+3. **Install the Python dependencies.**
    ```bash
    pip install -r requirements.txt
    ```
-3. Drop the card images into `<repo>/cards/`.
+4. **Get the card image pack** from the maintainer. The card scans are
+   **not** committed to this repo (they're copyrighted by the publisher) —
+   contact the maintainer to request access. The pack is a folder of JPEGs;
+   the filename stem of each image is its card ID
+   (e.g. `BDS1-EN_0008.jpg` → card `BDS1-EN_0008`).
+5. **Drop the images into `<repo>/cards/`.** That folder is gitignored, so
+   the images never accidentally end up in a commit.
+6. **Run the app.**
+   ```bash
+   python app.py
+   ```
+   Then open <http://127.0.0.1:5000>.
 
-## Card labels
+On Windows you can double-click `run.bat` instead of running `python app.py`.
 
-Metadata for the card scans lives in `labels.csv` at the repo root. Columns are
-`id, set, name, element, type`. This file is committed; if your scans match the
-maintainer's, you'll get name search and element/type filters for free. If
-your scans differ, you can edit `labels.csv` directly — or label cards from
-inside the app.
+---
 
-**Labeling from inside the app.** Click any card thumbnail (on Browse Cards or
-Edit Deck) and the card opens at full size with an editor panel alongside.
-Pick a Type, a Set, and the Element(s); changes autosave back to `labels.csv`.
-Walk between cards in the current filtered view with ◀ / ▶ (or the arrow keys)
-for batch labeling.
+## Using the app
 
-Vocabularies:
+- **Home (Decks)** — create, open, or delete decklists. Each deck is saved
+  as a small JSON file in `decks/`.
+- **Browse Cards** — scrolls every card in the collection. Filter by chip
+  rows (Set / Element / Type) and a name/code text box. Click a card to
+  open the editor.
+- **Edit Deck** — the left panel is a filtered card grid with `− n +`
+  controls to set how many copies to run; the right panel is the live
+  decklist with a `37 / 40` counter and a `⬇ Download deck image` button.
+- **Card editor** — opens whenever you click a card thumbnail. Shows the
+  card at full size with a form for Name / Set / Type / Attribute. Edits
+  autosave; `◀ ▶` (or arrow keys) walk to the previous / next card in
+  whatever list you opened from. `Esc` or the `×` button closes.
 
-- **Type**: Shadow, Partner, Skill, Command.
-- **Element / attribute**: light, dark, fire, water, earth, wind, none.
-  Only Shadow and Partner cards carry an element; the editor hides the
-  element block for Commands and Skills.
-- **Set**: a card can belong to multiple sets (e.g. reprinted in both
-  starter decks). Tick every set the card appears in. The six seeded sets
-  show by default; click "+ new" above the set list to add a new one.
+The exported deck image lays out every unique card in a grid, fans
+duplicate copies behind the front card with an `×N` badge, and is
+automatically scaled and compressed to fit under the size limit.
 
-Cards with no `labels.csv` row still appear in the browse grid — they show
-their ID instead of a printed name and don't match any chip filter. The
-"Hide unlabeled" toggle removes them from the grid entirely.
+---
 
-## Card-folder location override (optional)
+## How the metadata works
 
-If you'd rather keep your scans somewhere outside the project (e.g. on an
-external drive), point the app at them with **either**:
+Card metadata lives in `labels.csv` at the repo root. Columns:
+`id, set, name, element, type`. Both `set` and `element` can be multi-valued
+(pipe-separated in the CSV — e.g. `Set 2|Parallel Shadows` or `light|dark`).
+This file is committed so the labels are shared with every user of the
+canonical card pack.
 
-1. Environment variable **`BD_CARDS_DIR`**
-2. A file named **`config.local.json`** next to `app.py`:
+Vocabularies the editor uses:
+
+| Field | Allowed values |
+|-------|---|
+| Type | Shadow, Partner, Skill, Command |
+| Attribute / element | light, dark, fire, water, earth, wind, none |
+| Set | Light Starter, Shadow Starter, Demo Deck, Set 1, Set 2, Parallel Shadows (and any custom set you add via "+ new") |
+
+Only Shadow and Partner cards carry an attribute — the editor hides the
+attribute block for Skills and Commands. Cards with no `labels.csv` row
+still appear in the browse grid (shown by their ID); the "Hide unlabeled"
+toggle removes them from the grid entirely.
+
+---
+
+## Configuration overrides (optional)
+
+By default the app looks for cards at `./cards/` and labels at
+`./labels.csv`. Override with **either**:
+
+1. An environment variable: `BD_CARDS_DIR=/path/to/cards` or
+   `BD_LABELS_PATH=/path/to/labels.csv`.
+2. A `config.local.json` next to `app.py`:
    ```json
-   { "cards_dir": "/path/to/your/cards" }
+   { "cards_dir": "/path/to/your/cards", "labels_path": "/path/to/labels.csv" }
    ```
 
-The labels file location can be overridden with `BD_LABELS_PATH` or
-`labels_path` in `config.local.json` (default: `<repo>/labels.csv`).
-
-Optional keys in `config.local.json`:
+Other knobs available in `config.local.json`:
 
 | Key | Default | Meaning |
 |-----|---------|---------|
@@ -82,54 +124,69 @@ Optional keys in `config.local.json`:
 | `prewarm_thumbs` | `true` | Build the thumbnail cache in the background on startup so browsing is instant |
 | `prewarm_views` | `false` | Also pre-build the larger zoom/export cache (~250 MB; only speeds up first zoom/export) |
 
----
-
-## Run it
-
-- **Windows:** double-click **`run.bat`** (installs dependencies on first run,
-  then launches and opens your browser).
-- **Any OS / manual:**
-  ```bash
-  pip install -r requirements.txt
-  python app.py
-  ```
-  Then open <http://127.0.0.1:5000>.
+`config.local.json` is gitignored, so each user can set their own paths
+without polluting the repo.
 
 ---
 
-## Using the app
+## Project layout
 
-- **Decks** (home) — create, open, or delete decklists. Each deck is saved as a
-  JSON file in `decks/`.
-- **Browse Cards** — scroll all cards, filter by set, type a code to filter,
-  click any card to zoom in and read it.
-- **Edit a deck** — left panel is the card browser with `− n +` controls to set
-  how many copies to run; right panel shows your decklist with live counts, a
-  `37 / 40` counter, per-card trim/remove, and **⬇ Download deck image**.
+```
+.
+├── app.py              Flask app + HTTP routes
+├── catalog.py          In-memory card catalog; loads + writes labels.csv
+├── config.py           Resolves paths and reads config.local.json
+├── decks.py            Per-deck JSON persistence and deck-rule enforcement
+├── labels.py           labels.csv parser and dumper
+├── render.py           Deck-image export (PIL)
+├── vocab.py            Locked type/element/set vocabularies
+├── labels.csv          Card metadata (committed)
+├── cards/              Card images (gitignored)
+├── decks/              Saved decklists (gitignored)
+├── cache/              Generated thumbnails (gitignored)
+├── templates/          Jinja templates
+├── static/             JS + CSS
+├── scripts/            Maintainer-only utilities (see below)
+├── tests/              pytest suite
+└── docs/superpowers/   Design history (specs/plans from earlier iterations)
+```
 
-The exported image lays out every unique card in a grid, fans duplicate copies
-behind the front card with an `×N` badge, and is automatically scaled/compressed
-to fit under the size limit.
+### Maintainer tools
+
+The `scripts/` folder contains one-off utilities that the maintainer uses
+when curating the card pack — they're **not** part of the normal
+end-user workflow:
+
+- `scripts/flatten_cards.py` — flattens a nested per-set scan tree into
+  one flat folder. Useful when ingesting a new batch of scans.
+- `scripts/dedupe_cards.py` — finds duplicate images via byte hash or
+  perceptual hash (`--perceptual`), shows a removal plan, and on `--apply`
+  consolidates them. Run with `--help` for options.
+
+Each script defaults to dry-run; pass `--apply` to actually mutate anything.
 
 ---
 
-## What is and isn't in this repo
+## Development
 
-This is just the application code. The `.gitignore` keeps the following **out** of
-the repository, so nothing personal or copyrighted is published:
+Run the tests:
 
-- **Card images** (`*.jpg/*.jpeg/*.png`, the `English/` folder) — bring your own.
-- **Your decklists** (`decks/*.json`) — they stay on your machine.
-- **The thumbnail/view cache** (`cache/`) — rebuilt automatically.
-- **Your local card path** (`config.local.json`) — each user sets their own.
+```bash
+pytest -q
+```
 
-To use it, clone the repo, point it at your own card images (see *Configure the
-card folder* above), and run it. You need Python and your own copy of the scans.
+The test suite covers the labels parser/dumper, the catalog scan, deck
+persistence, and the image-flatten script. No browser-level tests — UI
+changes are smoke-tested manually.
 
-## Roadmap
+---
 
-- Card naming/labelling + search by name (currently filter by set + code).
-- Optional `.exe` bundle so friends don't need Python installed.
+## Privacy
+
+Nothing in the app talks to the network. The Flask server binds to
+`127.0.0.1` only, deck JSONs live in `decks/`, and the thumbnail cache
+lives in `cache/`. Card images, decks, and the thumbnail cache are all
+gitignored so they never leak through commits.
 
 ---
 
@@ -140,7 +197,7 @@ with — and no endorsement by — the creators, publishers, or rights holders o
 the Blue Dragon trading card game or franchise. **Blue Dragon**, its card
 images, names, artwork, and all related assets are the property of their
 respective owners. This repository contains **no** card images or game assets;
-you must supply your own from cards you legally own.
+users must supply their own from cards they legally own.
 
 ## License
 
