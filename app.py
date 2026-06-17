@@ -11,6 +11,7 @@ import catalog
 import config
 import decks
 import render
+import vocab
 
 app = Flask(__name__)
 
@@ -59,6 +60,36 @@ def api_cards():
         "elements": catalog.elements_seen(),
         "types": catalog.types_seen(),
     })
+
+
+@app.route("/api/vocab")
+def api_vocab():
+    """Vocabularies used by the editor (and, in a follow-up task, the chip
+    filters). Sets are the union of seeded defaults and anything seen in
+    labels.csv."""
+    seeded = list(vocab.SEEDED_SETS)
+    seen = catalog.sets_seen()
+    merged = list(seeded) + [s for s in seen if s not in seeded]
+    return jsonify({
+        "types": list(vocab.KNOWN_TYPES),
+        "elements": list(vocab.KNOWN_ELEMENTS),
+        "sets": merged,
+    })
+
+
+@app.route("/api/labels/<card_id>", methods=["PUT"])
+def api_label_put(card_id):
+    body = request.get_json(silent=True) or {}
+    if not isinstance(body.get("element"), list):
+        abort(400)
+    if not isinstance(body.get("name", ""), str): abort(400)
+    if not isinstance(body.get("set", ""), str): abort(400)
+    if not isinstance(body.get("type", ""), str): abort(400)
+    try:
+        rec = catalog.save_label(card_id, body)
+    except KeyError:
+        abort(404)
+    return jsonify(rec)
 
 
 @app.route("/api/cache/status")
