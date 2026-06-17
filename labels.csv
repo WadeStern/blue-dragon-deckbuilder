@@ -199,8 +199,8 @@ BDS1-EN_0033,Light Starter|Shadow Starter,Sahlia's Cookies,,Command
 BDS1-EN_0036,Light Starter|Shadow Starter,Phoenix Wing,,Command
 BDS1-EN_0037,Light Starter|Shadow Starter,Granted Audience With a King,,Command
 BDS1-EN_0038,Light Starter|Shadow Starter,Invisibility,,Command
-BDS2-EN_0001,Shadow Starter,Chimera Lv.1,,Shadow
-BDS2-EN_0002,Shadow Starter,Chimera Lv.2,,Shadow
+BDS2-EN_0001,Shadow Starter,Chimera Lv.1,dark,Shadow
+BDS2-EN_0002,Shadow Starter,Chimera Lv.2,dark,Shadow
 BDS2-EN_0003,Shadow Starter,Chimera Lv30,dark,Shadow
 BDS2-EN_0004,Shadow Starter,Chimera Lvhis,dark,Shadow
 BDS2-EN_0005,Shadow Starter,Nene,dark,Partner
