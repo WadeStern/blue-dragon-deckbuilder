@@ -148,8 +148,7 @@ without polluting the repo.
 ├── templates/          Jinja templates
 ├── static/             JS + CSS
 ├── scripts/            Maintainer-only utilities (see below)
-├── tests/              pytest suite
-└── docs/superpowers/   Design history (specs/plans from earlier iterations)
+└── tests/              pytest suite
 ```
 
 ### Maintainer tools
