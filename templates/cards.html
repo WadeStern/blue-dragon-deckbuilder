@@ -37,6 +37,7 @@
 
 <script src="/static/common.js"></script>
 <script src="/static/filters.js"></script>
+<script src="/static/editor.js"></script>
 <script>
 let CARDS = [];
 const state = {
@@ -46,14 +47,16 @@ const state = {
   search: "",
   hideUnlabeled: false,
 };
-const zoom = setupZoom();
 const grid = document.getElementById("grid");
+
+let LAST_FILTERED = [];
 
 function render() {
   const items = CARDS.filter(c => cardPasses(c, state));
+  LAST_FILTERED = items;
   grid.innerHTML = "";
   const frag = document.createDocumentFragment();
-  for (const c of items) {
+  items.forEach((c, i) => {
     const tile = document.createElement("div");
     tile.className = "card-tile";
     const primary = c.name || c.id;
@@ -62,11 +65,21 @@ function render() {
       <img loading="lazy" src="/api/card/${encodeURIComponent(c.id)}/thumb" alt="${primary}">
       <div class="code">${primary}</div>
       ${subtitle}`;
-    tile.querySelector("img").addEventListener("click", () => zoom(c.id));
+    tile.querySelector("img").addEventListener("click",
+      () => openEditor(LAST_FILTERED, i, {
+        getVocab: fetchVocab,
+        onSave: (updated) => onCardSaved(updated),
+      }));
     frag.appendChild(tile);
-  }
+  });
   grid.appendChild(frag);
   document.getElementById("count").textContent = `${items.length} cards`;
+}
+
+function onCardSaved(updated) {
+  const i = CARDS.findIndex(c => c.id === updated.id);
+  if (i >= 0) CARDS[i] = updated;
+  render();
 }
 
 async function load() {
