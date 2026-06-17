@@ -91,16 +91,48 @@ def build():
 def _record_to_api(rec):
     """Public record shape returned over the wire."""
     label = rec["label"]
+    canonical_id = resolve_canonical(rec["id"])
     if label is None:
         return {"id": rec["id"], "set": None, "name": None,
-                "element": [], "type": None}
+                "element": [], "type": None,
+                "duplicate_of": "", "canonical_id": canonical_id}
     return {
         "id": rec["id"],
         "set": label.set,
         "name": label.name,
         "element": list(label.element),
         "type": label.type,
+        "duplicate_of": label.duplicate_of,
+        "canonical_id": canonical_id,
     }
+
+
+def resolve_canonical(card_id, _seen=None):
+    """Follow `duplicate_of` pointers until we reach a card that's its own
+    canonical (or a missing target / a cycle, which both stop the chain at
+    the current card_id)."""
+    if _seen is None:
+        _seen = set()
+    if card_id in _seen:
+        return card_id
+    _seen.add(card_id)
+    rec = _catalog.get(card_id)
+    if rec is None:
+        return card_id
+    label = rec["label"]
+    if label is None or not label.duplicate_of:
+        return card_id
+    target = label.duplicate_of
+    if target == card_id or target not in _catalog:
+        return card_id
+    return resolve_canonical(target, _seen)
+
+
+def canonical_group(card_id):
+    """Return the set of all card_ids that resolve to the same canonical."""
+    target = resolve_canonical(card_id)
+    with _lock:
+        return {cid for cid in _catalog if resolve_canonical(cid) == target}
 
 
 def all_cards():
