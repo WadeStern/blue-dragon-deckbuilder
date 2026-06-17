@@ -83,9 +83,12 @@ function onCardSaved(updated) {
 }
 
 async function load() {
-  const data = await api("/api/cards");
+  const [data, vocab] = await Promise.all([
+    api("/api/cards"),
+    fetchVocab(),
+  ]);
   CARDS = data.cards;
-  renderStandardChips(data, state, render);
+  renderStandardChips(vocab, state, render);
   render();
 }
 

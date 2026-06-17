@@ -3,11 +3,11 @@
 // A card has the shape: { id, set, name, element, type } where any of
 // set/name/element/type may be null when the card is unlabeled.
 
-function buildChipRows(meta) {
+function buildChipRows(vocab) {
   return {
-    set: meta.sets || [],
-    element: meta.elements || [],
-    type: meta.types || [],
+    set: vocab.sets || [],
+    element: vocab.elements || [],
+    type: vocab.types || [],
   };
 }
 
@@ -63,8 +63,8 @@ function renderChipRow(container, label, values, selected, onToggle) {
   }
 }
 
-function renderStandardChips(meta, state, onChange) {
-  const chips = buildChipRows(meta);
+function renderStandardChips(vocab, state, onChange) {
+  const chips = buildChipRows(vocab);
   state.selectedSets = new Set();
   state.selectedElements = new Set();
   state.selectedTypes = new Set();

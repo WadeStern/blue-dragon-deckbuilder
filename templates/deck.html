@@ -325,14 +325,15 @@ async function init() {
   const grid = document.getElementById("grid");
   grid.innerHTML = '<p class="notice">Loading cards…</p>';
   try {
-    const [deck, cards] = await Promise.all([
+    const [deck, cards, vocab] = await Promise.all([
       api(`/api/decks/${encodeURIComponent(DECK_ID)}`),
       api("/api/cards"),
+      fetchVocab(),
     ]);
     CARDS = (cards && cards.cards) || [];
     cardMeta = {};
     for (const c of CARDS) cardMeta[c.id] = { set: c.set, name: c.name };
-    renderStandardChips(cards, filterState, renderGrid);
+    renderStandardChips(vocab, filterState, renderGrid);
     nameInput.value = deck.name;
     ingest(deck);
     setView(deck.total > 0 ? "deck" : "all");
