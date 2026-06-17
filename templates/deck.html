@@ -173,10 +173,12 @@ function changeCard(id, target) {
   if (deckOnly && (prev === 0 || target === 0)) {
     renderGrid();
   }
-  scheduleSave(id);
+  queueDeckSave(id);
 }
 
-function scheduleSave(id) {
+// NB: named queueDeckSave (not scheduleSave) to avoid colliding with the
+// editor's own scheduleSave — both scripts share the global scope here.
+function queueDeckSave(id) {
   clearTimeout(saveTimers[id]);
   saveTimers[id] = setTimeout(() => saveCard(id), 250);
 }

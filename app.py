@@ -157,7 +157,7 @@ def api_deck_card(deck_id):
     body = request.get_json(silent=True) or {}
     card_id = body.get("card_id")
     count = body.get("count", 0)
-    if card_id is None:
+    if not isinstance(card_id, str) or not isinstance(count, (int, float)):
         abort(400)
     deck = decks.set_card(deck_id, card_id, count)
     if deck is None:
