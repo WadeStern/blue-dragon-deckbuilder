@@ -6,14 +6,14 @@ BD01-EN_0004,Set 1|Parallel Shadows,Legend Knight,fire,Shadow
 BD01-EN_0005,Set 1|Parallel Shadows,Pegasus,wind,Shadow
 BD01-EN_0006,Set 1|Parallel Shadows,Sylphide,wind,Shadow
 BD01-EN_0007,Set 1|Parallel Shadows,Zephyrus,wind,Shadow
-BD01-EN_0008,Set 1,Swarvian Angec,wind,Shadow
+BD01-EN_0008,Set 1|Parallel Shadows,Guardian Angel,wind,Shadow
 BD01-EN_0009,Set 1|Demo Deck,Blue Dragon & Shu,light,Partner
 BD01-EN_0010,Set 1,Phoenix & Kluke,fire,Partner
 BD01-EN_0011,Set 1,Minotaur & Jiro,earth,Partner
 BD01-EN_0012,Set 1,Kelolon,light,Partner
 BD01-EN_0013,Set 1|Demo Deck,Poo Snake,none,Partner
 BD01-EN_0014,Set 1,Chimera & Nene,dark,Partner
-BD01-EN_0015,Set 1,Snforcer Robot,none,Partner
+BD01-EN_0015,Set 1,Enforcer Robot,none,Partner
 BD01-EN_0016,Set 1,Destroyer Robot,none,Partner
 BD01-EN_0017,Set 1,Coordinator,none,Partner
 BD01-EN_0018,Set 1,Zola & Killer Bat,none,Partner
@@ -28,7 +28,7 @@ BD01-EN_0026,Set 1,Steel gian,fire,Partner
 BD01-EN_0027,Set 1,Flame Raptor,fire,Partner
 BD01-EN_0028,Set 1,Schneider,dark,Partner
 BD01-EN_0029,Set 1,Andropov,dark,Partner
-BD01-EN_0030,Set 1,Suyu-5070,wind,Partner
+BD01-EN_0030,Set 1,Soyo-Soyo,wind,Partner
 BD01-EN_0031,Set 1,Mechosaur,wind,Partner
 BD01-EN_0032,Set 1,Dullahan,wind,Partner
 BD01-EN_0033,Set 1,Crested Cockatrice,wind,Partner
@@ -98,7 +98,7 @@ BD02-EN_0036,Set 2,Bomber Mecha Crab,water,Partner
 BD02-EN_0037,Set 2,Poison Helmet,water,Partner
 BD02-EN_0038,Set 2,Zola,none,Partner
 BD02-EN_0039,Set 2,Killer Bat,none,Partner
-BD02-EN_0040,Set 2,Numerun,wind,Partner
+BD02-EN_0040,Set 2,Homeron,none,Partner
 BD02-EN_0041,Set 2,Delphinium,dark,Partner
 BD02-EN_0042,Set 2,Salinas,dark,Partner
 BD02-EN_0043,Set 2,Euphir,dark,Partner
@@ -106,11 +106,11 @@ BD02-EN_0044,Set 2,Saver Rc E See,dark,Partner
 BD02-EN_0045,Set 2,Varovit Se,dark,Partner
 BD02-EN_0046,Set 2,Alvhaimw,dark,Partner
 BD02-EN_0047,Set 2,Jeucalion E,dark,Partner
-BD02-EN_0048,Set 2,Vil Mural O,earth,Partner
+BD02-EN_0048,Set 2,Evil Mural,earth,Partner
 BD02-EN_0049,Set 2,Misfortune Mural,earth,Partner
 BD02-EN_0050,Set 2,Poison Mural,earth,Partner
 BD02-EN_0051,Set 2,Chaos Mural,earth,Partner
-BD02-EN_0052,Set 2,Vrange Solvick,earth,Partner
+BD02-EN_0052,Set 2,Orange Soldier,earth,Partner
 BD02-EN_0053,Set 2,Stone Wolf Ghost,earth,Partner
 BD02-EN_0054,Set 2,Missile Mole,earth,Partner
 BD02-EN_0055,Set 2,Flying Needle Mole,earth,Partner
@@ -217,4 +217,3 @@ BDS2-EN_0015,Shadow Starter,Szabo,dark,Partner
 BDS2-EN_0029,Shadow Starter,One-on-One Battle,,Skill
 BDS2-EN_0034,Shadow Starter,Secret Training,,Command
 Receipt_20230713_0008,Parallel Shadows,Blue Dragon Lv.1,none,Shadow
-Receipt_20230713_0016,Parallel Shadows,Guardian Angel,wind,Shadow
