@@ -8,9 +8,11 @@ from PIL import Image
 
 import config
 import labels
+import vocab
 
 # id -> {"id", "filename", "path", "label": LabelRow | None}
 _catalog = {}
+_label_rows = {}        # id -> LabelRow ; the live in-memory copy of labels.csv
 _sets = []
 _elements = []
 _types = []
@@ -64,6 +66,8 @@ def build():
     with _lock:
         _catalog.clear()
         _catalog.update(catalog)
+        _label_rows.clear()
+        _label_rows.update(rows)
         _sets[:] = sets_list
         _elements[:] = elements_list
         _types[:] = types_list
@@ -142,6 +146,47 @@ def get_api(card_id):
     """Public accessor — returns the API-shaped dict or None."""
     rec = get(card_id)
     return _record_to_api(rec) if rec else None
+
+
+def save_label(card_id, payload):
+    """Persist a label edit. Mutates labels.csv atomically and updates the
+    in-memory catalog so the next /api/cards call sees the change without a
+    full rescan.
+
+    payload = {"name": str, "set": str, "type": str, "element": list[str]}
+
+    Raises KeyError if `card_id` is not in the image scan.
+    Returns the updated public API record for the card.
+    """
+    name = (payload.get("name") or "").strip()
+    set_name = (payload.get("set") or "").strip()
+    type_ = (payload.get("type") or "").strip()
+    raw_elements = payload.get("element") or []
+
+    if type_ in vocab.TYPES_WITHOUT_ELEMENT:
+        element = ()
+    else:
+        element = tuple(sorted({
+            e.strip().lower() for e in raw_elements if e and e.strip()
+        }))
+
+    with _lock:
+        if card_id not in _catalog:
+            raise KeyError(card_id)
+
+        row = labels.LabelRow(
+            id=card_id, set=set_name, name=name,
+            element=element, type=type_,
+        )
+        _label_rows[card_id] = row
+        labels.dump(_label_rows, config.labels_path())
+
+        _catalog[card_id]["label"] = row
+
+        if set_name and set_name not in _sets:
+            _sets.append(set_name)
+
+        return _record_to_api(_catalog[card_id])
 
 
 def exists(card_id):
