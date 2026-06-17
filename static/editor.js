@@ -68,6 +68,9 @@ function _ensure() {
 }
 
 function close() {
+  // Push any pending autosave through BEFORE we wipe state — otherwise edits
+  // made within the last debounce window are silently discarded.
+  flushSave();
   if (_modal) _modal.classList.remove("open");
   _state = null;
   document.removeEventListener("keydown", _onKey);
