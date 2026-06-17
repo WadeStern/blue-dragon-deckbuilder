@@ -45,8 +45,23 @@ card images never leave your disk.
 Metadata for the card scans lives in `labels.csv` at the repo root. Columns are
 `id, set, name, element, type`. This file is committed; if your scans match the
 maintainer's, you'll get name search and element/type filters for free. If
-your scans differ (different printings, different language), edit `labels.csv`
-to match.
+your scans differ, you can edit `labels.csv` directly — or label cards from
+inside the app.
+
+**Labeling from inside the app.** Click any card thumbnail (on Browse Cards or
+Edit Deck) and the card opens at full size with an editor panel alongside.
+Pick a Type, a Set, and the Element(s); changes autosave back to `labels.csv`.
+Walk between cards in the current filtered view with ◀ / ▶ (or the arrow keys)
+for batch labeling.
+
+Vocabularies:
+
+- **Type**: Shadows, Partners, Skills, Commands.
+- **Element / attribute**: light, dark, fire, water, earth, wind, none.
+  Only Shadows and Partners carry an element; the editor hides the element
+  block for Commands and Skills.
+- **Set**: the six original sets, plus anything you add via the "+ Add new
+  set…" entry in the Set dropdown.
 
 Cards with no `labels.csv` row still appear in the browse grid — they show
 their ID instead of a printed name and don't match any chip filter. The
