@@ -114,25 +114,39 @@ function loadCurrent() {
   setStatus("", "");
 }
 
-function populateSet(currentSet) {
-  const sel = _modal.querySelector(".ed-set");
-  sel.innerHTML = "";
-  const blank = document.createElement("option");
-  blank.value = ""; blank.textContent = "—";
-  sel.appendChild(blank);
-  for (const s of _state.vocab.sets) {
-    const o = document.createElement("option"); o.value = s; o.textContent = s;
-    sel.appendChild(o);
+function populateSet(currentList) {
+  const box = _modal.querySelector(".ed-set-rows");
+  box.innerHTML = "";
+  const checked = new Set(currentList);
+  // Show every vocab set plus any set the card already has that's not in
+  // vocab yet (e.g. just-added one being shown for the first time).
+  const allSets = _state.vocab.sets.slice();
+  for (const s of currentList) {
+    if (s && !allSets.includes(s)) allSets.push(s);
   }
-  if (currentSet && !_state.vocab.sets.includes(currentSet)) {
-    const o = document.createElement("option");
-    o.value = currentSet; o.textContent = currentSet;
-    sel.appendChild(o);
+  for (const s of allSets) {
+    const wrap = document.createElement("label");
+    wrap.className = "ed-set-row";
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.value = s; cb.checked = checked.has(s);
+    cb.addEventListener("change", scheduleSave);
+    const txt = document.createElement("span"); txt.textContent = s;
+    wrap.appendChild(cb); wrap.appendChild(txt);
+    box.appendChild(wrap);
   }
-  const add = document.createElement("option");
-  add.value = "__add__"; add.textContent = "+ Add new set…";
-  sel.appendChild(add);
-  sel.value = currentSet || "";
+}
+
+function onAddNewSet() {
+  const name = (window.prompt("New set name:") || "").trim();
+  if (!name) return;
+  if (!_state.vocab.sets.includes(name)) {
+    _state.vocab.sets.push(name);
+  }
+  // Re-render with this set checked, preserving everything else.
+  const current = readForm().set;
+  if (!current.includes(name)) current.push(name);
+  populateSet(current);
+  scheduleSave();
 }
 
 function populateType(currentType) {
