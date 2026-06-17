@@ -177,7 +177,16 @@ def render_deck(deck, show_badge=True):
         for cid, cnt in deck.get("cards", {}).items()
         if cnt > 0 and catalog.exists(cid)
     ]
-    entries.sort(key=lambda e: (catalog.get(e[0])["set"], e[0]))
+
+    def _sort_key(entry):
+        cid, _ = entry
+        rec = catalog.get(cid)
+        label = rec.get("label") if rec else None
+        if label is None:
+            return (1, "", "", cid)
+        return (0, label.set, label.name.lower(), cid)
+
+    entries.sort(key=_sort_key)
     if not entries:
         raise ValueError("Deck has no resolvable cards to render.")
 
