@@ -97,3 +97,52 @@ input[type=number] { width: 56px; }
 
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--panel2); border: 1px solid var(--line); padding: 10px 18px; border-radius: 8px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 60; }
 .toast.show { opacity: 1; }
+
+/* Filter chip rows (used on cards.html and deck.html). */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 4px 0;
+}
+.chip-label {
+  font-size: 12px;
+  color: var(--sub);
+  margin-right: 6px;
+  min-width: 56px;
+}
+.chip {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.chip:hover { border-color: var(--accent); }
+.chip.on {
+  background: var(--accent);
+  color: #0b1220;
+  border-color: var(--accent);
+}
+.chip-empty {
+  font-size: 12px;
+  color: var(--sub);
+  margin-right: 8px;
+}
+.hide-unlabeled {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--sub);
+  margin-left: 8px;
+}
+.card-tile .code-sub {
+  font-size: 10px;
+  color: var(--sub);
+  text-align: center;
+  margin-top: -2px;
+}
