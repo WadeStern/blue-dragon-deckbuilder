@@ -122,3 +122,19 @@ card folder* above), and run it. You need Python and your own copy of the scans.
 
 - Card naming/labelling + search by name (currently filter by set + code).
 - Optional `.exe` bundle so friends don't need Python installed.
+
+---
+
+## Disclaimer
+
+This is an **unofficial, non-commercial, fan-made** tool with no affiliation
+with — and no endorsement by — the creators, publishers, or rights holders of
+the Blue Dragon trading card game or franchise. **Blue Dragon**, its card
+images, names, artwork, and all related assets are the property of their
+respective owners. This repository contains **no** card images or game assets;
+you must supply your own from cards you legally own.
+
+## License
+
+Application source code is released under the **MIT License** — see
+[`LICENSE`](LICENSE). The license covers the code only, not any game assets.

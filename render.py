@@ -17,13 +17,30 @@ BADGE_BG = (208, 52, 44)
 BADGE_TEXT = (255, 255, 255)
 
 
+# Cross-platform font candidates, tried in order. Bare names let Pillow search
+# the system font dirs; absolute paths cover the common locations on each OS.
+_FONTS = {
+    True: [  # bold
+        "arialbd.ttf", "segoeuib.ttf", "DejaVuSans-Bold.ttf",
+        "C:/Windows/Fonts/arialbd.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+        "/Library/Fonts/Arial Bold.ttf",
+    ],
+    False: [  # regular
+        "arial.ttf", "segoeui.ttf", "DejaVuSans.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/Library/Fonts/Arial.ttf",
+    ],
+}
+
+
 def _font(size, bold=True):
-    candidates = (
-        ["C:/Windows/Fonts/arialbd.ttf", "C:/Windows/Fonts/segoeuib.ttf"]
-        if bold
-        else ["C:/Windows/Fonts/arial.ttf", "C:/Windows/Fonts/segoeui.ttf"]
-    )
-    for path in candidates:
+    for path in _FONTS[bool(bold)]:
         try:
             return ImageFont.truetype(path, size)
         except OSError:
