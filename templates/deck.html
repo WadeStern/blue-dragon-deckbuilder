@@ -24,8 +24,10 @@
       <div class="toolbar">
         <button id="viewAll" class="mini primary" data-view="all">All cards</button>
         <button id="viewDeck" class="mini" data-view="deck">In deck</button>
-        <select id="setFilter"><option value="">All sets</option></select>
-        <input type="text" id="search" placeholder="Filter by code…">
+        <input type="text" id="search" placeholder="Search name or code…">
+        <label class="hide-unlabeled">
+          <input type="checkbox" id="hideUnlabeled"> Hide unlabeled
+        </label>
         <label class="notice">Size
           <input type="range" id="sizeRange" min="110" max="240" value="150">
         </label>
@@ -33,6 +35,9 @@
         <span id="warm" class="notice" style="display:none"></span>
         <span id="count" class="notice"></span>
       </div>
+      <div id="chipSet" class="chip-row"></div>
+      <div id="chipElement" class="chip-row"></div>
+      <div id="chipType" class="chip-row"></div>
       <div id="grid" class="card-grid"></div>
     </div>
 
@@ -56,16 +61,25 @@
 </div>
 
 <script src="/static/common.js"></script>
+<script src="/static/filters.js"></script>
 <script>
 const DECK_ID = {{ deck_id|tojson }};
 const MAX = {{ max_copies }};
 const TARGET = {{ target }};
 let CARDS = [];
-let cardSet = {};                 // id -> set name (for rendering from local state)
-let counts = {};                  // id -> count in deck
-let deckOnly = false;             // grid shows only cards already in the deck
-const tiles = {};                 // id -> { flag, qty, minus, plus }
+let cardMeta = {};                // id -> { set, name }
+let counts = {};
+let deckOnly = false;
+const tiles = {};
 const zoom = setupZoom();
+
+const filterState = {
+  selectedSets: new Set(),
+  selectedElements: new Set(),
+  selectedTypes: new Set(),
+  search: "",
+  hideUnlabeled: false,
+};
 
 function deckTotal() {
   return Object.values(counts).reduce((a, b) => a + b, 0);
@@ -75,10 +89,13 @@ function deckTotal() {
 function tileFor(c) {
   const tile = document.createElement("div");
   tile.className = "card-tile";
+  const primary = c.name || c.id;
+  const subtitle = c.name ? `<div class="code-sub">${c.id}</div>` : "";
   tile.innerHTML = `
     <div class="count-flag" style="display:none"></div>
-    <img loading="lazy" src="/api/card/${encodeURIComponent(c.id)}/thumb" alt="${c.id}">
-    <div class="code">${c.id}</div>
+    <img loading="lazy" src="/api/card/${encodeURIComponent(c.id)}/thumb" alt="${primary}">
+    <div class="code">${primary}</div>
+    ${subtitle}
     <div class="add-row">
       <button class="mini" data-act="minus">−</button>
       <span class="qty">0</span>
@@ -106,11 +123,8 @@ function refreshTile(id) {
   t.plus.disabled = n >= MAX;
 }
 function renderGrid() {
-  const set = document.getElementById("setFilter").value;
-  const q = document.getElementById("search").value.trim().toLowerCase();
   const items = CARDS.filter(c =>
-    (!set || c.set === set) &&
-    (!q || c.id.toLowerCase().includes(q)) &&
+    cardPasses(c, filterState) &&
     (!deckOnly || (counts[c.id] || 0) > 0));
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
@@ -137,19 +151,18 @@ function setView(view) {
 }
 
 /* ---------- deck mutations (optimistic UI + debounced save) ---------- */
-const saveTimers = {};            // id -> pending setTimeout handle
+const saveTimers = {};
 
-// Synchronous + instant: update local state and UI now, save to server later.
 function changeCard(id, target) {
   target = Math.max(0, Math.min(MAX, target));
   const prev = counts[id] || 0;
   if (target === prev) return;
   if (target === 0) delete counts[id]; else counts[id] = target;
 
-  refreshTile(id);                              // grid tile updates in place
-  renderDeckList(localDeck());                  // side list + counter pill
+  refreshTile(id);
+  renderDeckList(localDeck());
   if (deckOnly && (prev === 0 || target === 0)) {
-    renderGrid();                               // card entered/left the In-deck grid
+    renderGrid();
   }
   scheduleSave(id);
 }
@@ -171,17 +184,24 @@ async function flushSaves() {
   await Promise.all(Object.keys(saveTimers).map(saveCard));
 }
 
-// Build a deck-shaped object from local `counts` so the side list reflects
-// edits instantly without a round-trip.
+// Side-panel list from local counts (instant, no round-trip).
 function localDeck() {
-  const cards = Object.keys(counts).map(id =>
-    ({ id, set: cardSet[id] || "", count: counts[id] }));
-  cards.sort((a, b) => (a.set < b.set ? -1 : a.set > b.set ? 1 : 0)
-                       || (a.id < b.id ? -1 : 1));
+  const cards = Object.keys(counts).map(id => ({
+    id,
+    set: cardMeta[id]?.set || null,
+    name: cardMeta[id]?.name || null,
+    count: counts[id],
+  }));
+  cards.sort((a, b) => {
+    const sa = a.set || "~", sb = b.set || "~";
+    if (sa !== sb) return sa < sb ? -1 : 1;
+    const na = (a.name || "").toLowerCase(), nb = (b.name || "").toLowerCase();
+    if (na !== nb) return na < nb ? -1 : 1;
+    return a.id < b.id ? -1 : 1;
+  });
   return { cards, total: deckTotal(), missing: [] };
 }
 
-// Pull authoritative server state into `counts` + side list (initial load / reset).
 function ingest(d) {
   counts = {};
   for (const it of d.cards) counts[it.id] = it.count;
@@ -200,11 +220,13 @@ function renderDeckList(d) {
     list.innerHTML = '<p class="notice">No cards yet — add some from the left.</p>';
   }
   for (const it of d.cards) {
+    const primary = it.name || it.id;
+    const sub = it.name ? `<small>${it.id}</small>` : "";
     const row = document.createElement("div");
     row.className = "deck-row";
     row.innerHTML = `
       <img src="/api/card/${encodeURIComponent(it.id)}/thumb" loading="lazy">
-      <span class="name">${it.id}<br><small>${it.set}</small></span>
+      <span class="name">${primary}<br>${sub}</span>
       <button class="mini" title="remove one">−</button>
       <span class="qty">${it.count}</span>
       <button class="mini" title="add one">+</button>
@@ -217,12 +239,10 @@ function renderDeckList(d) {
     row.querySelector("img").addEventListener("click", () => zoom(it.id));
     list.appendChild(row);
   }
-  // counter pill
   const pill = document.getElementById("pill");
   pill.textContent = `${d.total} / ${TARGET}`;
   pill.classList.toggle("over", d.total > TARGET);
   pill.classList.toggle("full", d.total === TARGET);
-  // missing cards warning
   const miss = document.getElementById("missing");
   if (d.missing && d.missing.length) {
     miss.style.display = "block";
@@ -238,19 +258,17 @@ async function clearDeck() {
   toast("Deck cleared");
 }
 
-/* ---------- name editing ---------- */
 const nameInput = document.getElementById("deckName");
 nameInput.addEventListener("change", async () => {
   await apiJSON(`/api/decks/${encodeURIComponent(DECK_ID)}`, "PUT", { name: nameInput.value });
   toast("Renamed");
 });
 
-/* ---------- image download ---------- */
 async function downloadImage() {
   const btn = document.getElementById("dlBtn");
   btn.disabled = true; btn.textContent = "Rendering…";
   try {
-    await flushSaves();   // ensure the newest edits are persisted before rendering
+    await flushSaves();
     const res = await fetch(`/api/decks/${encodeURIComponent(DECK_ID)}/image`);
     if (!res.ok) throw new Error((await res.json()).error || res.statusText);
     const blob = await res.blob();
@@ -269,9 +287,14 @@ async function downloadImage() {
   }
 }
 
-/* ---------- init ---------- */
-document.getElementById("setFilter").addEventListener("change", renderGrid);
-document.getElementById("search").addEventListener("input", renderGrid);
+document.getElementById("search").addEventListener("input", (e) => {
+  filterState.search = e.target.value;
+  renderGrid();
+});
+document.getElementById("hideUnlabeled").addEventListener("change", (e) => {
+  filterState.hideUnlabeled = e.target.checked;
+  renderGrid();
+});
 document.getElementById("viewAll").addEventListener("click", () => setView("all"));
 document.getElementById("viewDeck").addEventListener("click", () => setView("deck"));
 setupSizeSlider(document.getElementById("sizeRange"));
@@ -285,16 +308,12 @@ async function init() {
       api("/api/cards"),
     ]);
     CARDS = (cards && cards.cards) || [];
-    cardSet = {};
-    for (const c of CARDS) cardSet[c.id] = c.set;
-    const sel = document.getElementById("setFilter");
-    for (const s of (cards.sets || [])) {
-      const o = document.createElement("option"); o.value = s; o.textContent = s;
-      sel.appendChild(o);
-    }
+    cardMeta = {};
+    for (const c of CARDS) cardMeta[c.id] = { set: c.set, name: c.name };
+    renderStandardChips(cards, filterState, renderGrid);
     nameInput.value = deck.name;
-    ingest(deck);                                   // populate counts + side list FIRST
-    setView(deck.total > 0 ? "deck" : "all");       // open into In-deck view; renders grid
+    ingest(deck);
+    setView(deck.total > 0 ? "deck" : "all");
     watchCacheWarm(document.getElementById("warm"));
   } catch (e) {
     grid.innerHTML = `<p class="warn">⚠ Failed to load cards: ${e.message}.` +
@@ -303,8 +322,6 @@ async function init() {
 }
 init();
 
-// If the tab closes within the debounce window, push pending edits with a
-// keepalive request so nothing is lost.
 window.addEventListener("beforeunload", () => {
   for (const id in saveTimers) {
     clearTimeout(saveTimers[id]);
