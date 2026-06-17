@@ -17,8 +17,16 @@ function cardPasses(card, state) {
   if (state.hideUnlabeled && !card.name && !card.set) return false;
 
   if (state.selectedSets.size && !state.selectedSets.has((card.set || "").toLowerCase())) return false;
-  if (state.selectedElements.size
-      && !state.selectedElements.has((card.element || "").toLowerCase())) return false;
+
+  if (state.selectedElements.size) {
+    const els = (card.element || []).map(e => e.toLowerCase());
+    let any = false;
+    for (const sel of state.selectedElements) {
+      if (els.includes(sel)) { any = true; break; }
+    }
+    if (!any) return false;
+  }
+
   if (state.selectedTypes.size
       && !state.selectedTypes.has((card.type || "").toLowerCase())) return false;
 

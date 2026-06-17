@@ -15,9 +15,9 @@ def fake_cards(tmp_path, monkeypatch):
     labels_csv = tmp_path / "labels.csv"
     labels_csv.write_text(
         "id,set,name,element,type\n"
-        "BDS1-EN_0001,Light Starter,Phoenix,Light,Shadow\n"
-        "BDS1-EN_0002,Light Starter,Jiro,light,partner\n"   # same element, different case
-        "BDS1-EN_8888,Light Starter,Ghost,light,event\n",   # orphan
+        "BDS1-EN_0001,Light Starter,Phoenix,Light,Shadows\n"
+        "BDS1-EN_0002,Light Starter,Jiro,light,Partners\n"
+        "BDS1-EN_8888,Light Starter,Ghost,light,Shadows\n",   # orphan
         encoding="utf-8",
     )
 
@@ -53,19 +53,27 @@ def test_buckets_labeled_unlabeled_orphan(fake_cards):
 def test_seen_values_dedupe_case_insensitive(fake_cards):
     catalog = fake_cards
     catalog.build()
-    # Both labeled cards use "light"/"Light" — dedupe to one chip.
     elements = catalog.elements_seen()
-    assert len(elements) == 1
-    assert elements[0].lower() == "light"
-    # First-seen casing wins for display.
-    assert elements[0] == "Light"
+    # Both cards use light (case-insensitive); dedupe to one chip.
+    assert elements == ["light"]
 
-    # Two distinct types — Shadow and partner.
     types = catalog.types_seen()
-    assert sorted(t.lower() for t in types) == ["partner", "shadow"]
+    assert sorted(types) == ["Partners", "Shadows"]
 
 
 def test_sets_seen_from_labels(fake_cards):
     catalog = fake_cards
     catalog.build()
     assert catalog.sets_seen() == ["Light Starter"]
+
+
+def test_api_card_returns_element_list(fake_cards):
+    catalog = fake_cards
+    catalog.build()
+    api_cards = catalog.all_cards()
+    by_id = {c["id"]: c for c in api_cards}
+
+    # Labeled card: element is a non-empty list of strings.
+    assert by_id["BDS1-EN_0001"]["element"] == ["light"]
+    # Unlabeled card: element is an empty list (not None).
+    assert by_id["BDS1-EN_9999"]["element"] == []

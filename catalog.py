@@ -56,7 +56,9 @@ def build():
     orphaned = [row_id for row_id in rows if row_id not in catalog]
 
     sets_list = _first_seen_display(rec["label"].set for rec in labeled)
-    elements_list = _first_seen_display(rec["label"].element for rec in labeled)
+    elements_list = _first_seen_display(
+        el for rec in labeled for el in rec["label"].element
+    )
     types_list = _first_seen_display(rec["label"].type for rec in labeled)
 
     with _lock:
@@ -85,12 +87,15 @@ def build():
 def _record_to_api(rec):
     """Public record shape returned over the wire."""
     label = rec["label"]
+    if label is None:
+        return {"id": rec["id"], "set": None, "name": None,
+                "element": [], "type": None}
     return {
         "id": rec["id"],
-        "set": label.set if label else None,
-        "name": label.name if label else None,
-        "element": label.element if label else None,
-        "type": label.type if label else None,
+        "set": label.set,
+        "name": label.name,
+        "element": list(label.element),
+        "type": label.type,
     }
 
 
