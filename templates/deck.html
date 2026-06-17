@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edit Deck · Blue Dragon Deck Builder</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <h1>🐉 Deck Builder</h1>
+  <nav>
+    <a href="/">Decks</a>
+    <a href="/cards">Browse Cards</a>
+  </nav>
+  <span class="spacer"></span>
+  <span class="notice">max {{ max_copies }}/card · target {{ target }}</span>
+</header>
+
+<div class="wrap">
+  <div class="editor">
+    <!-- Add-cards panel -->
+    <div class="panel">
+      <div class="toolbar">
+        <button id="viewAll" class="mini primary" data-view="all">All cards</button>
+        <button id="viewDeck" class="mini" data-view="deck">In deck</button>
+        <select id="setFilter"><option value="">All sets</option></select>
+        <input type="text" id="search" placeholder="Filter by code…">
+        <label class="notice">Size
+          <input type="range" id="sizeRange" min="110" max="240" value="150">
+        </label>
+        <span class="spacer" style="flex:1"></span>
+        <span id="warm" class="notice" style="display:none"></span>
+        <span id="count" class="notice"></span>
+      </div>
+      <div id="grid" class="card-grid"></div>
+    </div>
+
+    <!-- Deck panel -->
+    <div class="deck-side">
+      <div class="panel">
+        <div class="deck-head">
+          <input type="text" id="deckName" title="Deck name">
+          <span id="pill" class="count-pill">0 / {{ target }}</span>
+        </div>
+        <div id="missing" class="warn" style="display:none"></div>
+        <div id="deckList" class="deck-list"></div>
+        <div class="toolbar" style="margin:0">
+          <button class="primary" id="dlBtn" onclick="downloadImage()">⬇ Download deck image</button>
+          <button class="danger mini" onclick="clearDeck()">Clear all</button>
+        </div>
+        <p class="notice" style="margin-bottom:0">Image is auto-sized to stay under 10&nbsp;MB for Discord.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/common.js"></script>
+<script>
+const DECK_ID = {{ deck_id|tojson }};
+const MAX = {{ max_copies }};
+const TARGET = {{ target }};
+let CARDS = [];
+let cardSet = {};                 // id -> set name (for rendering from local state)
+let counts = {};                  // id -> count in deck
+let deckOnly = false;             // grid shows only cards already in the deck
+const tiles = {};                 // id -> { flag, qty, minus, plus }
+const zoom = setupZoom();
+
+function deckTotal() {
+  return Object.values(counts).reduce((a, b) => a + b, 0);
+}
+
+/* ---------- card grid (add panel) ---------- */
+function tileFor(c) {
+  const tile = document.createElement("div");
+  tile.className = "card-tile";
+  tile.innerHTML = `
+    <div class="count-flag" style="display:none"></div>
+    <img loading="lazy" src="/api/card/${encodeURIComponent(c.id)}/thumb" alt="${c.id}">
+    <div class="code">${c.id}</div>
+    <div class="add-row">
+      <button class="mini" data-act="minus">−</button>
+      <span class="qty">0</span>
+      <button class="mini" data-act="plus">+</button>
+    </div>`;
+  tile.querySelector("img").addEventListener("click", () => zoom(c.id));
+  const minus = tile.querySelector('[data-act=minus]');
+  const plus = tile.querySelector('[data-act=plus]');
+  const qty = tile.querySelector(".qty");
+  const flag = tile.querySelector(".count-flag");
+  minus.addEventListener("click", () => changeCard(c.id, (counts[c.id] || 0) - 1));
+  plus.addEventListener("click", () => changeCard(c.id, (counts[c.id] || 0) + 1));
+  tiles[c.id] = { flag, qty, minus, plus };
+  refreshTile(c.id);
+  return tile;
+}
+function refreshTile(id) {
+  const t = tiles[id];
+  if (!t) return;
+  const n = counts[id] || 0;
+  t.qty.textContent = n;
+  t.flag.style.display = n ? "block" : "none";
+  t.flag.textContent = "×" + n;
+  t.minus.disabled = n <= 0;
+  t.plus.disabled = n >= MAX;
+}
+function renderGrid() {
+  const set = document.getElementById("setFilter").value;
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  const items = CARDS.filter(c =>
+    (!set || c.set === set) &&
+    (!q || c.id.toLowerCase().includes(q)) &&
+    (!deckOnly || (counts[c.id] || 0) > 0));
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  for (const id in tiles) delete tiles[id];
+  if (!items.length) {
+    grid.innerHTML = `<p class="notice">${deckOnly
+      ? "No cards in this deck yet — switch to “All cards” to add some."
+      : "No cards match your filter."}</p>`;
+  } else {
+    const frag = document.createDocumentFragment();
+    for (const c of items) frag.appendChild(tileFor(c));
+    grid.appendChild(frag);
+  }
+  document.getElementById("count").textContent = deckOnly
+    ? `${items.length} unique · ${deckTotal()} cards in deck`
+    : `${items.length} cards`;
+}
+
+function setView(view) {
+  deckOnly = view === "deck";
+  document.getElementById("viewAll").classList.toggle("primary", !deckOnly);
+  document.getElementById("viewDeck").classList.toggle("primary", deckOnly);
+  renderGrid();
+}
+
+/* ---------- deck mutations (optimistic UI + debounced save) ---------- */
+const saveTimers = {};            // id -> pending setTimeout handle
+
+// Synchronous + instant: update local state and UI now, save to server later.
+function changeCard(id, target) {
+  target = Math.max(0, Math.min(MAX, target));
+  const prev = counts[id] || 0;
+  if (target === prev) return;
+  if (target === 0) delete counts[id]; else counts[id] = target;
+
+  refreshTile(id);                              // grid tile updates in place
+  renderDeckList(localDeck());                  // side list + counter pill
+  if (deckOnly && (prev === 0 || target === 0)) {
+    renderGrid();                               // card entered/left the In-deck grid
+  }
+  scheduleSave(id);
+}
+
+function scheduleSave(id) {
+  clearTimeout(saveTimers[id]);
+  saveTimers[id] = setTimeout(() => saveCard(id), 250);
+}
+async function saveCard(id) {
+  clearTimeout(saveTimers[id]); delete saveTimers[id];
+  try {
+    await apiJSON(`/api/decks/${encodeURIComponent(DECK_ID)}/card`,
+                  "POST", { card_id: id, count: counts[id] || 0 });
+  } catch (e) {
+    toast("Save failed: " + e.message);
+  }
+}
+async function flushSaves() {
+  await Promise.all(Object.keys(saveTimers).map(saveCard));
+}
+
+// Build a deck-shaped object from local `counts` so the side list reflects
+// edits instantly without a round-trip.
+function localDeck() {
+  const cards = Object.keys(counts).map(id =>
+    ({ id, set: cardSet[id] || "", count: counts[id] }));
+  cards.sort((a, b) => (a.set < b.set ? -1 : a.set > b.set ? 1 : 0)
+                       || (a.id < b.id ? -1 : 1));
+  return { cards, total: deckTotal(), missing: [] };
+}
+
+// Pull authoritative server state into `counts` + side list (initial load / reset).
+function ingest(d) {
+  counts = {};
+  for (const it of d.cards) counts[it.id] = it.count;
+  renderDeckList(d);
+}
+function applyResolved(d) {
+  ingest(d);
+  if (deckOnly) renderGrid(); else for (const id in tiles) refreshTile(id);
+}
+
+/* ---------- deck side panel ---------- */
+function renderDeckList(d) {
+  const list = document.getElementById("deckList");
+  list.innerHTML = "";
+  if (!d.cards.length) {
+    list.innerHTML = '<p class="notice">No cards yet — add some from the left.</p>';
+  }
+  for (const it of d.cards) {
+    const row = document.createElement("div");
+    row.className = "deck-row";
+    row.innerHTML = `
+      <img src="/api/card/${encodeURIComponent(it.id)}/thumb" loading="lazy">
+      <span class="name">${it.id}<br><small>${it.set}</small></span>
+      <button class="mini" title="remove one">−</button>
+      <span class="qty">${it.count}</span>
+      <button class="mini" title="add one">+</button>
+      <button class="danger mini" title="remove all">✕</button>`;
+    const [minus, plus, rm] = row.querySelectorAll("button");
+    minus.addEventListener("click", () => changeCard(it.id, it.count - 1));
+    plus.addEventListener("click", () => changeCard(it.id, it.count + 1));
+    plus.disabled = it.count >= MAX;
+    rm.addEventListener("click", () => changeCard(it.id, 0));
+    row.querySelector("img").addEventListener("click", () => zoom(it.id));
+    list.appendChild(row);
+  }
+  // counter pill
+  const pill = document.getElementById("pill");
+  pill.textContent = `${d.total} / ${TARGET}`;
+  pill.classList.toggle("over", d.total > TARGET);
+  pill.classList.toggle("full", d.total === TARGET);
+  // missing cards warning
+  const miss = document.getElementById("missing");
+  if (d.missing && d.missing.length) {
+    miss.style.display = "block";
+    miss.textContent = `⚠ ${d.missing.length} saved card(s) not found in catalog and skipped.`;
+  } else { miss.style.display = "none"; }
+}
+
+async function clearDeck() {
+  if (!confirm("Remove all cards from this deck?")) return;
+  for (const id in saveTimers) { clearTimeout(saveTimers[id]); delete saveTimers[id]; }
+  const d = await apiJSON(`/api/decks/${encodeURIComponent(DECK_ID)}`, "PUT", { cards: {} });
+  applyResolved(d);
+  toast("Deck cleared");
+}
+
+/* ---------- name editing ---------- */
+const nameInput = document.getElementById("deckName");
+nameInput.addEventListener("change", async () => {
+  await apiJSON(`/api/decks/${encodeURIComponent(DECK_ID)}`, "PUT", { name: nameInput.value });
+  toast("Renamed");
+});
+
+/* ---------- image download ---------- */
+async function downloadImage() {
+  const btn = document.getElementById("dlBtn");
+  btn.disabled = true; btn.textContent = "Rendering…";
+  try {
+    await flushSaves();   // ensure the newest edits are persisted before rendering
+    const res = await fetch(`/api/decks/${encodeURIComponent(DECK_ID)}/image`);
+    if (!res.ok) throw new Error((await res.json()).error || res.statusText);
+    const blob = await res.blob();
+    const mb = (blob.size / 1048576).toFixed(1);
+    const under = res.headers.get("X-Under-Limit") !== "0";
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${DECK_ID}.jpg`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast(under ? `Saved (${mb} MB)` : `Saved but ${mb} MB — over limit!`);
+  } catch (e) {
+    toast("Error: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = "⬇ Download deck image";
+  }
+}
+
+/* ---------- init ---------- */
+document.getElementById("setFilter").addEventListener("change", renderGrid);
+document.getElementById("search").addEventListener("input", renderGrid);
+document.getElementById("viewAll").addEventListener("click", () => setView("all"));
+document.getElementById("viewDeck").addEventListener("click", () => setView("deck"));
+setupSizeSlider(document.getElementById("sizeRange"));
+
+async function init() {
+  const grid = document.getElementById("grid");
+  grid.innerHTML = '<p class="notice">Loading cards…</p>';
+  try {
+    const [deck, cards] = await Promise.all([
+      api(`/api/decks/${encodeURIComponent(DECK_ID)}`),
+      api("/api/cards"),
+    ]);
+    CARDS = (cards && cards.cards) || [];
+    cardSet = {};
+    for (const c of CARDS) cardSet[c.id] = c.set;
+    const sel = document.getElementById("setFilter");
+    for (const s of (cards.sets || [])) {
+      const o = document.createElement("option"); o.value = s; o.textContent = s;
+      sel.appendChild(o);
+    }
+    nameInput.value = deck.name;
+    ingest(deck);                                   // populate counts + side list FIRST
+    setView(deck.total > 0 ? "deck" : "all");       // open into In-deck view; renders grid
+    watchCacheWarm(document.getElementById("warm"));
+  } catch (e) {
+    grid.innerHTML = `<p class="warn">⚠ Failed to load cards: ${e.message}.` +
+      ` Make sure the app is running, then refresh (Ctrl+F5).</p>`;
+  }
+}
+init();
+
+// If the tab closes within the debounce window, push pending edits with a
+// keepalive request so nothing is lost.
+window.addEventListener("beforeunload", () => {
+  for (const id in saveTimers) {
+    clearTimeout(saveTimers[id]);
+    fetch(`/api/decks/${encodeURIComponent(DECK_ID)}/card`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ card_id: id, count: counts[id] || 0 }),
+      keepalive: true,
+    });
+  }
+});
+</script>
+</body>
+</html>

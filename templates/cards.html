@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Browse Cards · Blue Dragon Deck Builder</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <h1>🐉 Blue Dragon Deck Builder</h1>
+  <nav>
+    <a href="/">Decks</a>
+    <a href="/cards" class="active">Browse Cards</a>
+  </nav>
+  <span class="spacer"></span>
+</header>
+
+<div class="wrap">
+  <div class="toolbar">
+    <select id="setFilter"><option value="">All sets</option></select>
+    <input type="text" id="search" placeholder="Filter by code…">
+    <label class="notice">Size
+      <input type="range" id="sizeRange" min="110" max="240" value="150">
+    </label>
+    <span class="spacer" style="flex:1"></span>
+    <span id="warm" class="notice" style="display:none"></span>
+    <span id="count" class="notice"></span>
+  </div>
+  <div id="grid" class="card-grid"></div>
+</div>
+
+<script src="/static/common.js"></script>
+<script>
+let CARDS = [];
+const zoom = setupZoom();
+const grid = document.getElementById("grid");
+
+function render() {
+  const set = document.getElementById("setFilter").value;
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  const items = CARDS.filter(c =>
+    (!set || c.set === set) && (!q || c.id.toLowerCase().includes(q)));
+  grid.innerHTML = "";
+  const frag = document.createDocumentFragment();
+  for (const c of items) {
+    const tile = document.createElement("div");
+    tile.className = "card-tile";
+    tile.innerHTML = `
+      <img loading="lazy" src="/api/card/${encodeURIComponent(c.id)}/thumb" alt="${c.id}">
+      <div class="code">${c.id}</div>`;
+    tile.querySelector("img").addEventListener("click", () => zoom(c.id));
+    frag.appendChild(tile);
+  }
+  grid.appendChild(frag);
+  document.getElementById("count").textContent = `${items.length} cards`;
+}
+
+async function load() {
+  const data = await api("/api/cards");
+  CARDS = data.cards;
+  const sel = document.getElementById("setFilter");
+  for (const s of data.sets) {
+    const o = document.createElement("option"); o.value = s; o.textContent = s;
+    sel.appendChild(o);
+  }
+  render();
+}
+document.getElementById("setFilter").addEventListener("change", render);
+document.getElementById("search").addEventListener("input", render);
+setupSizeSlider(document.getElementById("sizeRange"));
+load();
+watchCacheWarm(document.getElementById("warm"));
+</script>
+</body>
+</html>

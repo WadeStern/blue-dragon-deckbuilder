@@ -1,0 +1,20 @@
+# Card scans are NOT distributed with this repo — each user points at their own copy.
+/English/
+*.jpg
+*.jpeg
+*.png
+
+# Local machine configuration (each user sets their own card path).
+config.local.json
+
+# Generated thumbnail / view cache.
+cache/
+
+# Saved decklists are personal data — keep the folder, ignore its contents.
+decks/*.json
+
+# Python.
+__pycache__/
+*.pyc
+.venv/
+venv/

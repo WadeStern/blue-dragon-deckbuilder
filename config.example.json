@@ -1,0 +1,9 @@
+{
+  "cards_dir": "C:/path/to/BlueDragon/English",
+  "excluded_sets": ["Strategies & Tips"],
+  "max_copies_per_card": 3,
+  "deck_target_size": 40,
+  "export_max_bytes": 10485760,
+  "prewarm_thumbs": true,
+  "prewarm_views": false
+}

@@ -1,0 +1,155 @@
+"""Blue Dragon Deck Builder — local Flask app.
+
+Run:  python app.py     (or double-click run.bat)
+Then open http://127.0.0.1:5000 in your browser.
+"""
+import io
+
+from flask import (Flask, abort, jsonify, render_template, request,
+                   send_file, send_from_directory)
+
+import catalog
+import config
+import decks
+import render
+
+app = Flask(__name__)
+
+_scan = catalog.build()
+
+
+# --------------------------------------------------------------------------- #
+# Pages
+# --------------------------------------------------------------------------- #
+@app.route("/")
+def home():
+    return render_template("index.html", scan=_scan)
+
+
+@app.route("/cards")
+def cards_page():
+    return render_template("cards.html", sets=catalog.sets())
+
+
+@app.route("/deck/<deck_id>")
+def deck_page(deck_id):
+    if decks.get(deck_id) is None:
+        abort(404)
+    return render_template("deck.html", deck_id=deck_id, sets=catalog.sets(),
+                           max_copies=config.MAX_COPIES_PER_CARD,
+                           target=config.DECK_TARGET_SIZE)
+
+
+# --------------------------------------------------------------------------- #
+# Card API
+# --------------------------------------------------------------------------- #
+@app.route("/api/status")
+def api_status():
+    return jsonify(catalog.build())  # rescan + report
+
+
+@app.route("/api/cards")
+def api_cards():
+    return jsonify({"sets": catalog.sets(), "cards": catalog.all_cards()})
+
+
+@app.route("/api/cache/status")
+def api_cache_status():
+    return jsonify(catalog.warm_state())
+
+
+@app.route("/api/card/<card_id>/thumb")
+def api_thumb(card_id):
+    path = catalog.thumb_path(card_id)
+    if not path:
+        abort(404)
+    return send_file(path, mimetype="image/jpeg")
+
+
+@app.route("/api/card/<card_id>/view")
+def api_view(card_id):
+    path = catalog.view_path(card_id)
+    if not path:
+        abort(404)
+    return send_file(path, mimetype="image/jpeg")
+
+
+# --------------------------------------------------------------------------- #
+# Deck API
+# --------------------------------------------------------------------------- #
+@app.route("/api/decks", methods=["GET", "POST"])
+def api_decks():
+    if request.method == "POST":
+        name = (request.get_json(silent=True) or {}).get("name", "Untitled Deck")
+        deck = decks.create(name)
+        return jsonify({"id": deck["id"], "name": deck["name"]}), 201
+    return jsonify(decks.list_decks())
+
+
+@app.route("/api/decks/<deck_id>", methods=["GET", "PUT", "DELETE"])
+def api_deck(deck_id):
+    if request.method == "DELETE":
+        return ("", 204) if decks.delete(deck_id) else abort(404)
+    if request.method == "PUT":
+        body = request.get_json(silent=True) or {}
+        deck = decks.update(deck_id, name=body.get("name"),
+                            cards=body.get("cards"))
+        if deck is None:
+            abort(404)
+    resolved = decks.get_resolved(deck_id)
+    if resolved is None:
+        abort(404)
+    return jsonify(resolved)
+
+
+@app.route("/api/decks/<deck_id>/card", methods=["POST"])
+def api_deck_card(deck_id):
+    body = request.get_json(silent=True) or {}
+    card_id = body.get("card_id")
+    count = body.get("count", 0)
+    if card_id is None:
+        abort(400)
+    deck = decks.set_card(deck_id, card_id, count)
+    if deck is None:
+        abort(404)
+    return jsonify(decks.get_resolved(deck_id))
+
+
+@app.route("/api/decks/<deck_id>/image")
+def api_deck_image(deck_id):
+    deck = decks.get(deck_id)
+    if deck is None:
+        abort(404)
+    show_badge = request.args.get("badge", "1") != "0"
+    try:
+        data, info = render.render_deck(deck, show_badge=show_badge)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    fname = f"{deck_id}.jpg"
+    resp = send_file(io.BytesIO(data), mimetype="image/jpeg",
+                     as_attachment=True, download_name=fname)
+    resp.headers["X-Image-Bytes"] = str(info["bytes"])
+    resp.headers["X-Under-Limit"] = "1" if info["under_limit"] else "0"
+    return resp
+
+
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(app.static_folder, "favicon.ico") \
+        if False else ("", 204)
+
+
+if config.PREWARM_THUMBS and _scan["exists"]:
+    catalog.warm_cache_async(warm_views=config.PREWARM_VIEWS)
+
+
+if __name__ == "__main__":
+    print(f"Cards dir : {_scan['root']}")
+    print(f"Found     : {_scan['card_count']} cards across {len(_scan['sets'])} sets")
+    if not _scan["exists"]:
+        print("  !! Card directory not found — set BD_CARDS_DIR or config.local.json"
+              " (see README.txt)")
+    if config.PREWARM_THUMBS:
+        print("Pre-building thumbnail cache in the background…")
+    print("Open your browser to:  http://127.0.0.1:5000   (Ctrl+C to stop)")
+    app.run(host="127.0.0.1", port=5000, debug=False, threaded=True)

@@ -1,0 +1,8 @@
+# Normalize line endings so the repo stores LF regardless of contributor OS.
+* text=auto eol=lf
+*.bat text eol=crlf
+
+# Treat image types as binary (belt-and-suspenders; they're git-ignored anyway).
+*.png binary
+*.jpg binary
+*.jpeg binary

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blue Dragon Deck Builder</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <h1>🐉 Blue Dragon Deck Builder</h1>
+  <nav>
+    <a href="/" class="active">Decks</a>
+    <a href="/cards">Browse Cards</a>
+  </nav>
+  <span class="spacer"></span>
+  <span class="notice">{{ scan.card_count }} cards · {{ scan.sets|length }} sets</span>
+</header>
+
+<div class="wrap">
+  {% if not scan.exists %}
+  <p class="warn">⚠ Card folder not found at <code>{{ scan.root }}</code>.
+     Set <code>BD_CARDS_DIR</code> or edit <code>config.local.json</code> (see README).</p>
+  {% endif %}
+
+  <div class="toolbar">
+    <button class="primary" onclick="newDeck()">+ New Deck</button>
+    <span class="spacer"></span>
+  </div>
+
+  <div id="decks" class="deck-grid"></div>
+  <p id="empty" class="notice" style="display:none">No decks yet — create one to get started.</p>
+</div>
+
+<script src="/static/common.js"></script>
+<script>
+async function load() {
+  const decks = await api("/api/decks");
+  const grid = document.getElementById("decks");
+  grid.innerHTML = "";
+  document.getElementById("empty").style.display = decks.length ? "none" : "block";
+  for (const d of decks) {
+    const el = document.createElement("div");
+    el.className = "deck-card";
+    const thumbs = d.sample.map(
+      id => `<img src="/api/card/${encodeURIComponent(id)}/thumb" loading="lazy">`
+    ).join("");
+    el.innerHTML = `
+      <h3>${escapeHtml(d.name)}</h3>
+      <div class="meta">${d.total} cards · ${d.unique} unique</div>
+      <div class="thumbs">${thumbs || '<span class="notice">empty</span>'}</div>
+      <div class="row">
+        <a class="btn" href="/deck/${encodeURIComponent(d.id)}">Open</a>
+        <span class="spacer" style="flex:1"></span>
+        <button class="danger mini" onclick="delDeck('${d.id}', '${escapeAttr(d.name)}')">Delete</button>
+      </div>`;
+    grid.appendChild(el);
+  }
+}
+function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function escapeAttr(s){return s.replace(/'/g,"\\'").replace(/"/g,'&quot;');}
+
+async function newDeck() {
+  const name = prompt("Deck name:", "New Deck");
+  if (!name) return;
+  const d = await apiJSON("/api/decks", "POST", { name });
+  location.href = `/deck/${encodeURIComponent(d.id)}`;
+}
+async function delDeck(id, name) {
+  if (!confirm(`Delete deck "${name}"? This cannot be undone.`)) return;
+  await api(`/api/decks/${encodeURIComponent(id)}`, { method: "DELETE" });
+  toast("Deck deleted");
+  load();
+}
+load();
+</script>
+</body>
+</html>
