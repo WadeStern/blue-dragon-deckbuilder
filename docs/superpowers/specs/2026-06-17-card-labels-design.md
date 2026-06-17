@@ -117,7 +117,7 @@ Current layout: `<external>/English/<set>/<file>.jpg`. End state: `<repo>/cards/
 
 `scripts/flatten_cards.py`:
 
-- Required arg: `--source <path>` (the per-set root, e.g. `/Users/wadestern/stuff/English`).
+- Required arg: `--source <path>` (the per-set root, e.g. `/path/to/source/scans`).
 - Optional: `--dest <path>` (defaults to `<repo>/cards/`, matching the new default `cards_dir`).
 - Default behavior: dry-run. Prints the full copy plan as `src → dst` lines plus a summary count. No disk changes.
 - `--apply`: copy files. Idempotent — silently skips destination files that already exist *and* are byte-identical; refuses (with an error message) if a destination exists with different bytes.

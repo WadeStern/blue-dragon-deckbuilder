@@ -1,5 +1,5 @@
 """Render a decklist into a single shareable image (staggered stacks + count
-badges), auto-tuned to stay under the Discord file-size limit."""
+badges), auto-tuned to stay small."""
 import io
 import math
 
@@ -196,7 +196,6 @@ def render_deck(deck, show_badge=True):
     data = _encode_under_limit(img, config.EXPORT_MAX_BYTES)
     info = {
         "bytes": len(data),
-        "under_limit": len(data) <= config.EXPORT_MAX_BYTES,
         "unique": len(entries),
         "total": sum(c for _, c in entries),
     }

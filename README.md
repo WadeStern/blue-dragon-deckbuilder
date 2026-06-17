@@ -1,8 +1,8 @@
-# 🐉 Blue Dragon Deck Builder
+# Blue Dragon Deck Builder
 
 A small **local** web app for building decks for the Blue Dragon trading card
 game and exporting a single shareable image of the deck (staggered card stacks
-with copy counts), auto-sized to stay under Discord's 10 MB limit.
+with copy counts).
 
 Everything runs on your own machine. Nothing is uploaded anywhere, and your
 card images never leave your disk.
@@ -19,8 +19,9 @@ card images never leave your disk.
   up under both set chips.
 - Build multiple decks (each saved as a JSON file under `decks/`) with the
   3-copies-per-card limit and a target deck size.
-- Export your deck as a single staggered-stack image, auto-tuned to fit
-  under Discord's 10 MB attachment cap.
+- Export your deck as a single staggered-stack image (kept small so it's
+  easy to share), or as a plain-text decklist that another user can
+  import to get an identical deck.
 
 ---
 
@@ -73,7 +74,7 @@ On Windows you can double-click `run.bat` instead of running `python app.py`.
 
 The exported deck image lays out every unique card in a grid, fans
 duplicate copies behind the front card with an `×N` badge, and is
-automatically scaled and compressed to fit under the size limit.
+automatically scaled and compressed so it stays small.
 
 ---
 
@@ -120,7 +121,7 @@ Other knobs available in `config.local.json`:
 | `labels_path` | `./labels.csv` | Path to the labels CSV |
 | `max_copies_per_card` | `3` | Deck rule: max copies of one card |
 | `deck_target_size` | `40` | Deck size the counter aims for |
-| `export_max_bytes` | `10485760` | Image export size cap (10 MB) |
+| `export_max_bytes` | `10485760` | Upper bound the image-export auto-shrink targets |
 | `prewarm_thumbs` | `true` | Build the thumbnail cache in the background on startup so browsing is instant |
 | `prewarm_views` | `false` | Also pre-build the larger zoom/export cache (~250 MB; only speeds up first zoom/export) |
 
@@ -187,6 +188,14 @@ Nothing in the app talks to the network. The Flask server binds to
 `127.0.0.1` only, deck JSONs live in `decks/`, and the thumbnail cache
 lives in `cache/`. Card images, decks, and the thumbnail cache are all
 gitignored so they never leak through commits.
+
+---
+
+## Credits
+
+Card scans this project was built around were originally shared by
+**u/The-Red-Comet00** on Reddit — thank you for making the catalog
+accessible to the community.
 
 ---
 

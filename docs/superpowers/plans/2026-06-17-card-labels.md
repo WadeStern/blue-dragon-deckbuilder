@@ -545,10 +545,10 @@ Expected: All tests pass (smoke + labels + flatten = 14 tests).
 
 Run:
 ```bash
-.venv/bin/python -m scripts.flatten_cards --source /Users/wadestern/stuff/English
+.venv/bin/python -m scripts.flatten_cards --source /path/to/source/scans
 ```
 
-Expected output: a list of 272 `src → dst` lines, summary `Source files: 272`, destination `/Users/wadestern/stuff/blue-dragon-deckbuilder/cards`, and a closing `(dry-run) pass --apply to copy these files.` line. No filesystem changes.
+Expected output: a list of 272 `src → dst` lines, summary `Source files: 272`, destination `<repo>/cards`, and a closing `(dry-run) pass --apply to copy these files.` line. No filesystem changes.
 
 - [ ] **Step 6: Commit**
 
@@ -575,11 +575,11 @@ pkill -f "python app.py" || true
 Run:
 ```bash
 .venv/bin/python -m scripts.flatten_cards \
-  --source /Users/wadestern/stuff/English \
+  --source /path/to/source/scans \
   --apply
 ```
 
-Expected output: `Applied: 272 files → /Users/wadestern/stuff/blue-dragon-deckbuilder/cards`.
+Expected output: `Applied: 272 files → <repo>/cards`.
 
 - [ ] **Step 3: Verify the flat folder is populated**
 
@@ -594,7 +594,7 @@ Expected: `272`.
 
 Run:
 ```bash
-ls /Users/wadestern/stuff/English
+ls /path/to/source/scans
 ```
 
 Expected: the 7 original subdirectories are still present (we copied, didn't move).

@@ -8,7 +8,7 @@
 </head>
 <body>
 <header class="top">
-  <h1>🐉 Blue Dragon Deck Builder</h1>
+  <h1>Blue Dragon Deck Builder</h1>
   <nav>
     <a href="/" class="active">Decks</a>
     <a href="/cards">Browse Cards</a>
@@ -25,11 +25,28 @@
 
   <div class="toolbar">
     <button class="primary" onclick="newDeck()">+ New Deck</button>
+    <button class="mini" onclick="openImport()">⬆ Import deck</button>
     <span class="spacer"></span>
   </div>
 
   <div id="decks" class="deck-grid"></div>
   <p id="empty" class="notice" style="display:none">No decks yet — create one to get started.</p>
+</div>
+
+<!-- Import dialog -->
+<div id="importBg" class="modal-bg" style="display:none">
+  <div class="modal-panel">
+    <h3>Import deck</h3>
+    <p class="notice">Paste deck text below, or pick a <code>.txt</code> file. Existing decks aren't overwritten — a new deck is created.</p>
+    <input type="file" id="importFile" accept=".txt,text/plain">
+    <textarea id="importText" rows="10" placeholder="# Paste deck text here…"></textarea>
+    <div class="toolbar" style="margin:0">
+      <button class="primary" onclick="doImport()">Import</button>
+      <button class="mini" onclick="closeImport()">Cancel</button>
+      <span class="spacer" style="flex:1"></span>
+    </div>
+    <div id="importMsg" class="notice"></div>
+  </div>
 </div>
 
 <script src="/static/common.js"></script>
@@ -72,6 +89,48 @@ async function delDeck(id, name) {
   toast("Deck deleted");
   load();
 }
+
+function openImport() {
+  document.getElementById("importBg").style.display = "flex";
+  document.getElementById("importText").value = "";
+  document.getElementById("importFile").value = "";
+  document.getElementById("importMsg").textContent = "";
+}
+function closeImport() {
+  document.getElementById("importBg").style.display = "none";
+}
+document.getElementById("importFile").addEventListener("change", async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  document.getElementById("importText").value = await f.text();
+});
+async function doImport() {
+  const text = document.getElementById("importText").value;
+  const msg = document.getElementById("importMsg");
+  msg.textContent = "Importing…";
+  try {
+    const res = await fetch("/api/decks/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      msg.textContent = `Error: ${data.error || res.statusText}`;
+      return;
+    }
+    if (data.warnings && data.warnings.length) {
+      const head = `Imported "${data.name}" with ${data.warnings.length} warning(s). Open it now?`;
+      if (!confirm(head + "\n\n" + data.warnings.slice(0, 8).join("\n"))) {
+        closeImport(); load(); return;
+      }
+    }
+    location.href = `/deck/${encodeURIComponent(data.id)}`;
+  } catch (e) {
+    msg.textContent = "Error: " + e.message;
+  }
+}
+
 load();
 </script>
 </body>

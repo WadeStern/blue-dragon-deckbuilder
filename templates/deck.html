@@ -8,7 +8,7 @@
 </head>
 <body>
 <header class="top">
-  <h1>🐉 Deck Builder</h1>
+  <h1>Deck Builder</h1>
   <nav>
     <a href="/">Decks</a>
     <a href="/cards">Browse Cards</a>
@@ -50,11 +50,12 @@
         </div>
         <div id="missing" class="warn" style="display:none"></div>
         <div id="deckList" class="deck-list"></div>
-        <div class="toolbar" style="margin:0">
+        <div class="toolbar" style="margin:0; flex-wrap:wrap">
           <button class="primary" id="dlBtn" onclick="downloadImage()">⬇ Download deck image</button>
+          <button class="mini" id="txtBtn" onclick="downloadText()">⬇ Download deck text</button>
           <button class="danger mini" onclick="clearDeck()">Clear all</button>
         </div>
-        <p class="notice" style="margin-bottom:0">Image is auto-sized to stay under 10&nbsp;MB for Discord.</p>
+        <p class="notice" style="margin-bottom:0">Image is a small file for sharing. Text file is importable by other users.</p>
       </div>
     </div>
   </div>
@@ -286,6 +287,27 @@ nameInput.addEventListener("change", async () => {
   toast("Renamed");
 });
 
+async function downloadText() {
+  const btn = document.getElementById("txtBtn");
+  btn.disabled = true; btn.textContent = "Building…";
+  try {
+    await flushSaves();
+    const res = await fetch(`/api/decks/${encodeURIComponent(DECK_ID)}/text`);
+    if (!res.ok) throw new Error(res.statusText);
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${DECK_ID}.txt`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast("Saved deck text");
+  } catch (e) {
+    toast("Error: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = "⬇ Download deck text";
+  }
+}
+
 async function downloadImage() {
   const btn = document.getElementById("dlBtn");
   btn.disabled = true; btn.textContent = "Rendering…";
@@ -294,14 +316,12 @@ async function downloadImage() {
     const res = await fetch(`/api/decks/${encodeURIComponent(DECK_ID)}/image`);
     if (!res.ok) throw new Error((await res.json()).error || res.statusText);
     const blob = await res.blob();
-    const mb = (blob.size / 1048576).toFixed(1);
-    const under = res.headers.get("X-Under-Limit") !== "0";
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `${DECK_ID}.jpg`;
     a.click();
     URL.revokeObjectURL(a.href);
-    toast(under ? `Saved (${mb} MB)` : `Saved but ${mb} MB — over limit!`);
+    toast("Saved deck image");
   } catch (e) {
     toast("Error: " + e.message);
   } finally {

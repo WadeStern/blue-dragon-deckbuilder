@@ -168,8 +168,40 @@ def api_deck_image(deck_id):
     resp = send_file(io.BytesIO(data), mimetype="image/jpeg",
                      as_attachment=True, download_name=fname)
     resp.headers["X-Image-Bytes"] = str(info["bytes"])
-    resp.headers["X-Under-Limit"] = "1" if info["under_limit"] else "0"
     return resp
+
+
+@app.route("/api/decks/<deck_id>/text")
+def api_deck_text(deck_id):
+    text = decks.export_text(deck_id)
+    if text is None:
+        abort(404)
+    resp = send_file(io.BytesIO(text.encode("utf-8")),
+                     mimetype="text/plain; charset=utf-8",
+                     as_attachment=True,
+                     download_name=f"{deck_id}.txt")
+    return resp
+
+
+@app.route("/api/decks/import", methods=["POST"])
+def api_deck_import():
+    """Accept a deck-text payload and create a new deck. Body is
+    application/json with a 'text' key (preferred) or raw text/plain."""
+    name = None
+    text = ""
+    if request.is_json:
+        body = request.get_json(silent=True) or {}
+        text = body.get("text") or ""
+        name = body.get("name")
+    else:
+        text = request.get_data(as_text=True) or ""
+    if not text.strip():
+        return jsonify({"error": "empty payload"}), 400
+    deck, warnings = decks.import_text(text, name=name)
+    if deck is None:
+        return jsonify({"error": "no recognisable cards", "warnings": warnings}), 400
+    return jsonify({"id": deck["id"], "name": deck["name"],
+                    "warnings": warnings}), 201
 
 
 @app.route("/favicon.ico")
