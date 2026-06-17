@@ -30,7 +30,7 @@ function _build() {
             <select class="ed-type"></select>
           </label>
           <div class="ed-element-block">
-            <div class="ed-element-label">Element</div>
+            <div class="ed-element-label">Attribute</div>
             <div class="ed-element-chips"></div>
           </div>
           <div class="ed-status"></div>
@@ -146,13 +146,13 @@ function populateElement(currentList) {
   box.innerHTML = "";
   const set = new Set(currentList.map(e => e.toLowerCase()));
   for (const el of _state.vocab.elements) {
-    const id = `el-${el}`;
     const wrap = document.createElement("label");
-    wrap.className = "ed-element-chip";
+    wrap.className = "ed-element-row";
     const cb = document.createElement("input");
-    cb.type = "checkbox"; cb.id = id; cb.value = el; cb.checked = set.has(el);
+    cb.type = "checkbox"; cb.value = el; cb.checked = set.has(el);
     cb.addEventListener("change", scheduleSave);
-    const txt = document.createElement("span"); txt.textContent = el;
+    const txt = document.createElement("span");
+    txt.textContent = el.charAt(0).toUpperCase() + el.slice(1);
     wrap.appendChild(cb); wrap.appendChild(txt);
     box.appendChild(wrap);
   }
