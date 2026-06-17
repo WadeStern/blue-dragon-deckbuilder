@@ -28,14 +28,14 @@ def home():
 
 @app.route("/cards")
 def cards_page():
-    return render_template("cards.html", sets=catalog.sets())
+    return render_template("cards.html")
 
 
 @app.route("/deck/<deck_id>")
 def deck_page(deck_id):
     if decks.get(deck_id) is None:
         abort(404)
-    return render_template("deck.html", deck_id=deck_id, sets=catalog.sets(),
+    return render_template("deck.html", deck_id=deck_id,
                            max_copies=config.MAX_COPIES_PER_CARD,
                            target=config.DECK_TARGET_SIZE)
 
@@ -50,7 +50,12 @@ def api_status():
 
 @app.route("/api/cards")
 def api_cards():
-    return jsonify({"sets": catalog.sets(), "cards": catalog.all_cards()})
+    return jsonify({
+        "cards": catalog.all_cards(),
+        "sets": catalog.sets_seen(),
+        "elements": catalog.elements_seen(),
+        "types": catalog.types_seen(),
+    })
 
 
 @app.route("/api/cache/status")
@@ -145,10 +150,17 @@ if config.PREWARM_THUMBS and _scan["exists"]:
 
 if __name__ == "__main__":
     print(f"Cards dir : {_scan['root']}")
-    print(f"Found     : {_scan['card_count']} cards across {len(_scan['sets'])} sets")
+    print(f"Found     : {_scan['card_count']} images "
+          f"({_scan['labeled_count']} labeled, "
+          f"{_scan['unlabeled_count']} unlabeled)")
+    print(f"Labels    : {_scan['labels_path']} "
+          f"({_scan['labeled_count']} rows used, "
+          f"{_scan['orphaned_label_count']} orphaned)")
+    for w in _scan.get("warnings", []):
+        print(f"  warn: {w}")
     if not _scan["exists"]:
-        print("  !! Card directory not found — set BD_CARDS_DIR or config.local.json"
-              " (see README.txt)")
+        print("  !! Card directory not found — drop your scans into "
+              f"{_scan['root']} or set BD_CARDS_DIR (see README).")
     if config.PREWARM_THUMBS:
         print("Pre-building thumbnail cache in the background…")
     print("Open your browser to:  http://127.0.0.1:5000   (Ctrl+C to stop)")
