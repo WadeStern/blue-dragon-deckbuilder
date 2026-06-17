@@ -41,10 +41,11 @@ function _build() {
     </div>`;
   document.body.appendChild(modal);
   // Close on click of: backdrop, stage gaps, or the X button.
+  // NOT on .editor-body — clicks inside the body (between or near the
+  // image and form panels) should never dismiss the editor.
   modal.addEventListener("click", (e) => {
     if (e.target === modal
-        || e.target.classList.contains("editor-stage")
-        || e.target.classList.contains("editor-body")) {
+        || e.target.classList.contains("editor-stage")) {
       close();
     }
   });

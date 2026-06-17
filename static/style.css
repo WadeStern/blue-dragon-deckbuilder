@@ -174,7 +174,7 @@ input[type=number] { width: 56px; }
 }
 .ed-close:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
 .editor-body {
-  display: flex; gap: 16px;
+  display: flex; gap: 0;
   flex: 1; min-width: 0; height: 100%;
 }
 .editor-image {
