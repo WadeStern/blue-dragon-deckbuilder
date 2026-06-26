@@ -228,9 +228,23 @@ input[type=number] { width: 56px; }
 .ed-element-row input[type=checkbox] {
   width: 14px; height: 14px; cursor: pointer; margin: 0;
 }
+.ed-actions {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 4px;
+}
+.ed-save {
+  font: inherit; font-weight: 600;
+  padding: 7px 18px;
+  background: var(--accent); color: #fff;
+  border: 1px solid var(--accent); border-radius: 6px;
+  cursor: pointer;
+}
+.ed-save:hover:not(:disabled) { filter: brightness(1.1); }
+.ed-save:disabled { opacity: 0.4; cursor: default; }
 .ed-status { font-size: 12px; min-height: 16px; color: var(--sub); }
 .ed-status[data-kind=saved] { color: var(--good); }
 .ed-status[data-kind=error] { color: var(--danger); }
+.ed-status[data-kind=dirty] { color: var(--accent); }
 .ed-set-block { display: flex; flex-direction: column; gap: 6px; }
 .ed-set-label {
   display: flex; align-items: center; justify-content: space-between;
