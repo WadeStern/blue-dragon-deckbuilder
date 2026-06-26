@@ -95,13 +95,21 @@ def _record_to_api(rec):
     label = rec["label"]
     if label is None:
         return {"id": rec["id"], "set": [], "name": None,
-                "element": [], "type": None}
+                "element": [], "type": None, "card_text": "", "exp": "",
+                "level_up": "", "change_exp": "",
+                "required_exp": "", "used_exp": ""}
     return {
         "id": rec["id"],
         "set": list(label.set),
         "name": label.name,
         "element": list(label.element),
         "type": label.type,
+        "card_text": label.card_text,
+        "exp": label.exp,
+        "level_up": label.level_up,
+        "change_exp": label.change_exp,
+        "required_exp": label.required_exp,
+        "used_exp": label.used_exp,
     }
 
 
@@ -180,6 +188,19 @@ def save_label(card_id, payload):
             e.strip().lower() for e in raw_elements if e and e.strip()
         }))
 
+    # Text fields apply to every card; numbers are stored as free-form text.
+    card_text = (payload.get("card_text") or "").strip()
+    exp = (payload.get("exp") or "").strip()
+    # The EXP stat pair depends on type; clear the non-applicable one so a card
+    # never carries Level Up values once it's a Partner, and vice versa.
+    level_up = change_exp = required_exp = used_exp = ""
+    if type_ in vocab.TYPES_WITH_LEVELUP:
+        level_up = (payload.get("level_up") or "").strip()
+        change_exp = (payload.get("change_exp") or "").strip()
+    elif type_ in vocab.TYPES_WITH_REQUIRED_USED:
+        required_exp = (payload.get("required_exp") or "").strip()
+        used_exp = (payload.get("used_exp") or "").strip()
+
     with _lock:
         if card_id not in _catalog:
             raise KeyError(card_id)
@@ -187,6 +208,9 @@ def save_label(card_id, payload):
         row = labels.LabelRow(
             id=card_id, set=set_tuple, name=name,
             element=element, type=type_,
+            card_text=card_text, exp=exp,
+            level_up=level_up, change_exp=change_exp,
+            required_exp=required_exp, used_exp=used_exp,
         )
         _label_rows[card_id] = row
         labels.dump(_label_rows, config.labels_path())

@@ -20,6 +20,13 @@ KNOWN_ELEMENTS = ("light", "dark", "fire", "water", "earth", "wind", "none")
 # these; the API forces element=[] on save; the loader warns if it sees one.
 TYPES_WITHOUT_ELEMENT = frozenset({"Command", "Skill"})
 
+# Per-type EXP stat fields. Every card has free-form `card_text` and `exp`;
+# in addition, Shadows track Level Up + Change EXP, while Partners/Commands/
+# Skills track Required EXP + Used EXP. The editor shows the matching pair and
+# the API clears the non-applicable pair on save (mirrors element handling).
+TYPES_WITH_LEVELUP = frozenset({"Shadow"})               # level_up, change_exp
+TYPES_WITH_REQUIRED_USED = frozenset({"Partner", "Command", "Skill"})  # required_exp, used_exp
+
 SEEDED_SETS = (
     "Light Starter",
     "Shadow Starter",

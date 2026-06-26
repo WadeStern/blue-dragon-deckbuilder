@@ -15,6 +15,11 @@ import vocab
 
 
 REQUIRED_COLUMNS = ("id", "set", "name", "element", "type")
+# Added later; absent from older files. Read with a "" default when missing,
+# always written by dump() so a file gains them on its first save.
+OPTIONAL_COLUMNS = ("card_text", "exp",
+                    "level_up", "change_exp", "required_exp", "used_exp")
+ALL_COLUMNS = REQUIRED_COLUMNS + OPTIONAL_COLUMNS
 
 
 class LabelError(ValueError):
@@ -28,6 +33,14 @@ class LabelRow:
     name: str
     element: tuple    # sorted, lowercased, deduped
     type: str
+    # Free-form text fields (numbers are stored as text). Default "" keeps
+    # older callers/files that only supply the five required columns working.
+    card_text: str = ""
+    exp: str = ""
+    level_up: str = ""      # Shadow only
+    change_exp: str = ""    # Shadow only
+    required_exp: str = ""  # Partner / Command / Skill
+    used_exp: str = ""      # Partner / Command / Skill
 
 
 def _parse_sets(cell):
@@ -68,6 +81,8 @@ def load(path):
                 f"{path}: missing required column(s): {', '.join(missing)}"
             )
         idx = {c: header.index(c) for c in REQUIRED_COLUMNS}
+        # Optional columns may be absent in older files.
+        opt_idx = {c: header.index(c) for c in OPTIONAL_COLUMNS if c in header}
 
         for line_no, raw in enumerate(reader, start=2):
             if not raw or all(not (c or "").strip() for c in raw):
@@ -83,12 +98,15 @@ def load(path):
                     f"{path}:{line_no} duplicate id {row_id!r}"
                 )
 
+            opt = {c: cells[opt_idx[c]] if c in opt_idx else ""
+                   for c in OPTIONAL_COLUMNS}
             row = LabelRow(
                 id=row_id,
                 set=_parse_sets(cells[idx["set"]]),
                 name=cells[idx["name"]],
                 element=_parse_elements(cells[idx["element"]]),
                 type=cells[idx["type"]],
+                **opt,
             )
 
             blanks = ([f for f in ("name", "type") if not getattr(row, f)]
@@ -126,7 +144,7 @@ def dump(rows, path):
     try:
         with open(tmp, "w", encoding="utf-8", newline="") as fh:
             writer = csv.writer(fh, lineterminator="\n")
-            writer.writerow(REQUIRED_COLUMNS)
+            writer.writerow(ALL_COLUMNS)
             for cid in sorted(rows):
                 row = rows[cid]
                 writer.writerow([
@@ -135,6 +153,12 @@ def dump(rows, path):
                     row.name,
                     "|".join(row.element),
                     row.type,
+                    row.card_text,
+                    row.exp,
+                    row.level_up,
+                    row.change_exp,
+                    row.required_exp,
+                    row.used_exp,
                 ])
         os.replace(tmp, path)
     except Exception:

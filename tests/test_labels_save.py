@@ -86,6 +86,36 @@ def test_save_command_clears_element(fake_world):
     assert "BDC1-EN_0001,Set 1,Bolt,,Command" in text
 
 
+def test_save_shadow_keeps_levelup_clears_required(fake_world):
+    catalog, _ = fake_world
+    rec = catalog.save_label("BDS1-EN_0001", {
+        "name": "Soldier", "set": ["Set 1"], "type": "Shadow",
+        "element": ["fire"], "card_text": "Deal 2 damage.", "exp": "1",
+        "level_up": "0", "change_exp": "3",
+        "required_exp": "9", "used_exp": "9",  # wrong-type values get dropped
+    })
+    assert rec["card_text"] == "Deal 2 damage."
+    assert rec["exp"] == "1"
+    assert rec["level_up"] == "0"
+    assert rec["change_exp"] == "3"
+    assert rec["required_exp"] == ""
+    assert rec["used_exp"] == ""
+
+
+def test_save_partner_keeps_required_clears_levelup(fake_world):
+    catalog, _ = fake_world
+    rec = catalog.save_label("BDS1-EN_0002", {
+        "name": "Shu", "set": ["Set 1"], "type": "Partner",
+        "element": ["fire"], "card_text": "Gains 2 ATK.", "exp": "1",
+        "required_exp": "3", "used_exp": "1",
+        "level_up": "9", "change_exp": "9",  # wrong-type values get dropped
+    })
+    assert rec["required_exp"] == "3"
+    assert rec["used_exp"] == "1"
+    assert rec["level_up"] == ""
+    assert rec["change_exp"] == ""
+
+
 def test_concurrent_saves_dont_corrupt(fake_world):
     catalog, csv_path = fake_world
     ready = threading.Barrier(2)

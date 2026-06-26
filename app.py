@@ -84,12 +84,26 @@ def api_label_put(card_id):
     body = request.get_json(silent=True)
     if not isinstance(body, dict):
         abort(400)
+    # Coerce a scalar text field: None -> "", numbers -> their string form (so
+    # an EXP of 0 survives), and reject lists/dicts as the wrong shape.
+    def _text(v):
+        if v is None:
+            return ""
+        if isinstance(v, (str, int, float)):
+            return str(v)
+        abort(400)
     # Normalize: missing/null fields default to empty; save_label tolerates these.
     payload = {
         "name": body.get("name") or "",
         "set": body.get("set") or [],
         "type": body.get("type") or "",
         "element": body.get("element") or [],
+        "card_text": _text(body.get("card_text")),
+        "exp": _text(body.get("exp")),
+        "level_up": _text(body.get("level_up")),
+        "change_exp": _text(body.get("change_exp")),
+        "required_exp": _text(body.get("required_exp")),
+        "used_exp": _text(body.get("used_exp")),
     }
     # Reject only genuinely wrong shapes (e.g. a string where a list is expected).
     if not isinstance(payload["name"], str): abort(400)

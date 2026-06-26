@@ -38,6 +38,23 @@ function _build() {
             <div class="ed-element-label">Attribute</div>
             <div class="ed-element-chips"></div>
           </div>
+          <label class="ed-card-text-label">Card Text
+            <textarea class="ed-card-text" rows="5"></textarea>
+          </label>
+          <label class="ed-stat1-label">
+            <span class="ed-stat1-name">Level Up</span>
+            <input type="text" class="ed-stat1" inputmode="numeric"
+                   autocomplete="off">
+          </label>
+          <label class="ed-stat2-label">
+            <span class="ed-stat2-name">Change EXP</span>
+            <input type="text" class="ed-stat2" inputmode="numeric"
+                   autocomplete="off">
+          </label>
+          <label>EXP
+            <input type="text" class="ed-exp" inputmode="numeric"
+                   autocomplete="off">
+          </label>
           <div class="ed-actions">
             <button type="button" class="ed-save" disabled>Save</button>
             <div class="ed-status"></div>
@@ -62,6 +79,10 @@ function _build() {
   // Edits only flag the form dirty (enabling Save); nothing persists until the
   // user clicks Save.
   modal.querySelector(".ed-name").addEventListener("input", refreshDirty);
+  modal.querySelector(".ed-card-text").addEventListener("input", refreshDirty);
+  modal.querySelector(".ed-exp").addEventListener("input", refreshDirty);
+  modal.querySelector(".ed-stat1").addEventListener("input", refreshDirty);
+  modal.querySelector(".ed-stat2").addEventListener("input", refreshDirty);
   modal.querySelector(".ed-add-set").addEventListener("click", onAddNewSet);
   modal.querySelector(".ed-type").addEventListener("change", onTypeChange);
   modal.querySelector(".ed-save").addEventListener("click", doSave);
@@ -86,10 +107,11 @@ function _onKey(e) {
   if (!_state) return;
   if (e.key === "Escape") { close(); return; }
   if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-  // While the name field is focused, let arrows move the text caret instead
-  // of navigating cards.
+  // While a text field is focused, let arrows move the caret instead of
+  // navigating cards. (Checkboxes/select fall through so you can still browse.)
   const ae = document.activeElement;
-  if (ae && ae.classList && ae.classList.contains("ed-name")) return;
+  if (ae && (ae.tagName === "TEXTAREA"
+             || (ae.tagName === "INPUT" && ae.type === "text"))) return;
   // preventDefault so the same keystroke can't ALSO mutate a focused control
   // (e.g. the Type <select>, where arrows silently change the selection and
   // would write that change onto every card you scroll past).
@@ -121,11 +143,14 @@ function loadCurrent() {
     `/api/card/${encodeURIComponent(card.id)}/view`;
 
   m.querySelector(".ed-name").value = card.name || "";
+  m.querySelector(".ed-card-text").value = card.card_text || "";
+  m.querySelector(".ed-exp").value = card.exp || "";
 
   populateSet(card.set || []);
   populateType(card.type || "");
   populateElement(card.element || []);
   toggleElementBlock(card.type);
+  updateStatFields();  // labels + values for the type's EXP stat pair
 
   m.querySelector(".prev").disabled = _state.index === 0;
   m.querySelector(".next").disabled = _state.index === _state.cards.length - 1;
@@ -216,7 +241,47 @@ function toggleElementBlock(type) {
 
 function onTypeChange(e) {
   toggleElementBlock(e.target.value);
+  updateStatFields();
   refreshDirty();
+}
+
+// Which EXP stat pair a type carries. Must mirror vocab.TYPES_WITH_LEVELUP /
+// TYPES_WITH_REQUIRED_USED and catalog.save_label. Returns null for types that
+// carry neither (blank or off-vocab) — the pair is hidden for those.
+const _TYPES_LEVELUP = new Set(["Shadow"]);
+const _TYPES_REQUSED = new Set(["Partner", "Command", "Skill"]);
+function _statFields(type) {
+  if (_TYPES_LEVELUP.has(type)) {
+    return { n1: "Level Up", n2: "Change EXP", f1: "level_up", f2: "change_exp" };
+  }
+  if (_TYPES_REQUSED.has(type)) {
+    return { n1: "Required EXP", n2: "Used EXP", f1: "required_exp", f2: "used_exp" };
+  }
+  return null;
+}
+
+// Show the stat pair matching the selected type, relabel it, and backfill its
+// values from the stored card. Hidden entirely when the type carries no pair.
+function updateStatFields() {
+  const m = _modal;
+  const type = m.querySelector(".ed-type").value;
+  const lab1 = m.querySelector(".ed-stat1-label");
+  const lab2 = m.querySelector(".ed-stat2-label");
+  const cfg = _statFields(type);
+  if (!cfg) {
+    lab1.style.display = "none";
+    lab2.style.display = "none";
+    m.querySelector(".ed-stat1").value = "";
+    m.querySelector(".ed-stat2").value = "";
+    return;
+  }
+  const card = _state.cards[_state.index];
+  lab1.style.display = "";
+  lab2.style.display = "";
+  m.querySelector(".ed-stat1-name").textContent = cfg.n1;
+  m.querySelector(".ed-stat2-name").textContent = cfg.n2;
+  m.querySelector(".ed-stat1").value = card[cfg.f1] || "";
+  m.querySelector(".ed-stat2").value = card[cfg.f2] || "";
 }
 
 function readForm() {
@@ -229,12 +294,24 @@ function readForm() {
     m.querySelectorAll(".ed-set-rows input:checked"),
     cb => cb.value
   );
-  return {
+  const type = m.querySelector(".ed-type").value;
+  const out = {
     name: m.querySelector(".ed-name").value.trim(),
     set: sets,
-    type: m.querySelector(".ed-type").value,
+    type: type,
     element: elements,
+    card_text: m.querySelector(".ed-card-text").value.trim(),
+    exp: m.querySelector(".ed-exp").value.trim(),
+    level_up: "", change_exp: "", required_exp: "", used_exp: "",
   };
+  // Map the two visible stat inputs onto the fields the current type uses; the
+  // other pair stays "" (the server clears it too).
+  const cfg = _statFields(type);
+  if (cfg) {
+    out[cfg.f1] = m.querySelector(".ed-stat1").value.trim();
+    out[cfg.f2] = m.querySelector(".ed-stat2").value.trim();
+  }
+  return out;
 }
 
 // True when the form differs from the stored card. Nothing is persisted on
@@ -284,7 +361,20 @@ function _normalizeLabel(label) {
     }
     element = Array.from(seen).sort();
   }
-  return JSON.stringify({ name, set, type, element });
+  const card_text = (label.card_text || "").trim();
+  const exp = (label.exp || "").trim();
+  // Only the type's own stat pair counts; the other is dropped on save, so
+  // ignore it here too (otherwise stale hidden values would look "dirty").
+  let level_up = "", change_exp = "", required_exp = "", used_exp = "";
+  const cfg = _statFields(type);
+  if (cfg) {
+    const v1 = (label[cfg.f1] || "").trim();
+    const v2 = (label[cfg.f2] || "").trim();
+    if (cfg.f1 === "level_up") { level_up = v1; change_exp = v2; }
+    else { required_exp = v1; used_exp = v2; }
+  }
+  return JSON.stringify({ name, set, type, element, card_text, exp,
+                          level_up, change_exp, required_exp, used_exp });
 }
 
 // The ONLY path that writes metadata. Invoked solely by the Save button.

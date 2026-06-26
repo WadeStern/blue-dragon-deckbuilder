@@ -165,6 +165,47 @@ def test_command_with_element_warns(tmp_path):
     assert any("Command" in w and "element" in w.lower() for w in warnings)
 
 
+def test_optional_columns_default_blank_when_absent(tmp_path):
+    """Older five-column files load with the new fields defaulting to ''."""
+    p = write_csv(tmp_path, """
+        id,set,name,element,type
+        BDS1-EN_0001,Light Starter,Phoenix,light,Shadow
+    """)
+    rows, _ = labels.load(str(p))
+    row = rows["BDS1-EN_0001"]
+    assert row.card_text == ""
+    assert row.exp == ""
+    assert row.level_up == row.change_exp == ""
+    assert row.required_exp == row.used_exp == ""
+
+
+def test_optional_columns_loaded_when_present(tmp_path):
+    p = write_csv(tmp_path, """
+        id,set,name,element,type,card_text,exp,level_up,change_exp,required_exp,used_exp
+        BDS1-EN_0001,Set 1,Soldier,fire,Shadow,Deal 2 damage,1,0,3,,
+    """)
+    rows, _ = labels.load(str(p))
+    row = rows["BDS1-EN_0001"]
+    assert row.card_text == "Deal 2 damage"
+    assert row.exp == "1"
+    assert row.level_up == "0"
+    assert row.change_exp == "3"
+
+
+def test_card_text_with_comma_roundtrips(tmp_path):
+    """Commas in card text must survive a dump/load via CSV quoting."""
+    row = labels.LabelRow(
+        id="BDS1-EN_0001", set=("Set 1",), name="Soldier",
+        element=("fire",), type="Shadow",
+        card_text="Send this, then draw a card.", exp="1",
+        level_up="0", change_exp="3",
+    )
+    out = tmp_path / "out.csv"
+    labels.dump({row.id: row}, str(out))
+    rows2, _ = labels.load(str(out))
+    assert rows2[row.id] == row
+
+
 def test_dump_roundtrip(tmp_path):
     src_path = write_csv(tmp_path, """
         id,set,name,element,type
@@ -178,7 +219,8 @@ def test_dump_roundtrip(tmp_path):
 
     # File is sorted by id.
     lines = out.read_text(encoding="utf-8").splitlines()
-    assert lines[0] == "id,set,name,element,type"
+    assert lines[0] == ("id,set,name,element,type,card_text,exp,"
+                        "level_up,change_exp,required_exp,used_exp")
     assert lines[1].startswith("BDA-EN_0001,")
     assert lines[2].startswith("BDB-EN_0002,")
     # Multi-element joined with |, alphabetical.
