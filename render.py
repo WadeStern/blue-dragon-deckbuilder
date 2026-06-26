@@ -10,6 +10,7 @@ import config
 import vocab
 
 CARD_ASPECT = 4052 / 2824          # height / width of the source scans
+ART_BOTTOM = 0.60                  # artwork ends ~60% down; below it is text
 BG = (31, 37, 48)                  # dark slate backdrop
 CARD_BORDER = (12, 14, 18)
 TEXT = (236, 240, 245)
@@ -143,7 +144,10 @@ def compose(entries, card_w, deck_name, show_badge=True):
             fx = cell_x
             fy = cell_y + fan_y
             br = round(card_w * 0.13)
-            _rounded_badge(draw, fx + card_w - br, fy + card_h - br, br,
+            # Sit in the bottom-right of the artwork (not the card) so the
+            # badge never covers the rules text / EXP footer below the art.
+            by = fy + round(card_h * ART_BOTTOM) - br
+            _rounded_badge(draw, fx + card_w - br, by, br,
                            f"×{count}", badge_font)
 
     return canvas
